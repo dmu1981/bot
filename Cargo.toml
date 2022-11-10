@@ -1,0 +1,12 @@
+[package]
+name = "aptivbot"
+version = "0.1.0"
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.17", features = ["full"] } 
+async-trait = "0.1.58"
+futures = "0.3.25"
+rppal = "0.14.0"
