@@ -7,12 +7,15 @@ use std::time::Duration;
 
 pub struct MotorController {
   pub tx   : mpsc::Sender<MotorStepCommand>,
+  ctrlc_rx : tokio::sync::broadcast::Receiver<()>
 }
 
 impl MotorController {
-  pub fn new(stepper : &Box<MotorStepper>) -> Box<MotorController> {
+  pub fn new(stepper : &Box<MotorStepper>,
+             ctrlc_rx : tokio::sync::broadcast::Receiver<()>) -> Box<MotorController> {
     Box::new(MotorController {
       tx: stepper.tx.clone(),
+      ctrlc_rx: ctrlc_rx
     })
   }
 }
@@ -24,21 +27,30 @@ impl Node for MotorController
   {
     println!("Motor Controller initialized");
   }
-
   async fn run(&mut self)
   {
-    let mut speed : f32 = 200.0;
+    let mut speed : f32 = 150.0;
 
     loop
     {
-        sleep(Duration::from_millis(250)).await;
-        speed = speed + 20.0;
-        println!("Setting new motor speed to {}", speed);
+        if let Ok(_) = self.ctrlc_rx.try_recv() {
+          return;
+        }
+        
+        //println!("Setting new motor speed to {}", speed);
         match self.tx.send(MotorStepCommand::Rotate(speed)).await
         {
             Err(_) => { println!("Could not send new motor speed"); }
             _ => { }
         }
+
+        sleep(Duration::from_millis(1000)).await;
+        /*speed = speed - 100.0;
+        if (speed < 100.0) {
+          speed = 100.0;
+        }*/
+
     }
   }
 }
+

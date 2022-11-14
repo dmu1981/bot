@@ -1,0 +1,35 @@
+wheels:
+  - name: "NorthEast"
+    gpiopins: [21, 20, 16, 19]
+    pivot:
+      x: 0.0
+      y: 0.0
+    forward:
+      x: 0.0
+      y: 0.0
+  - name: "NorthWest"
+    gpiopins: [21, 20, 16, 19]
+    pivot:
+      x: 0.0
+      y: 0.0
+    forward:
+      x: 0.0
+      y: 0.0
+  - name: "SouthEast"
+    gpiopins: [21, 20, 16, 19]
+    pivot:
+      x: 0.0
+      y: 0.0
+    forward:
+      x: 0.0
+      y: 0.0
+  - name: "SouthWest"
+    gpiopins: [21, 20, 16, 19]
+    pivot:
+      x: 0.0
+      y: 0.0
+    forward:
+      x: 0.0
+      y: 0.0
+simulation:
+  url: "http://192.168.178.33:4444"  

@@ -1,72 +1,83 @@
-
-//use futures::future::join_all;
-
+mod math;
 mod node;
-mod motorstepper;
-mod motorcontroller;
+mod testnode;
+mod producernode;
+mod wheelcontroller;
+mod motioncontroller;
+mod config;
+mod perception;
 
-use crate::node::Node;
-use crate::motorstepper::MotorStepper;
-use crate::motorcontroller::MotorController;
+use std::time::Duration;
+use tokio::sync::broadcast;
+use math::Vec2;
+use motioncontroller::MoveCommand;
 
-use rppal::gpio::Gpio;
-
-type NodeBox = Box<dyn Node + Send>;
-type NodeList = Vec<NodeBox>;
-
-fn init_all_nodes(mut node_list : NodeList) -> Vec<tokio::task::JoinHandle<NodeBox>>
+fn custom_ctrlc_handler(ctrlc_tx : broadcast::Sender<()>)
 {
-    let mut handles : Vec<tokio::task::JoinHandle<NodeBox>> = Vec::new();
-
-    while !node_list.is_empty() {
-        let mut node = node_list.swap_remove(0);
-        handles.push(tokio::spawn(async move {
-            node.init().await;
-
-            node
-        }));
+  let mut ctrlc_sent = false;
+  ctrlc::set_handler(move || {
+    if !ctrlc_sent
+    {
+      println!("Custom CTRL-C handler... drop signal sent, press again to terminate forcefully");
+      ctrlc_tx.send(()).unwrap();
+      ctrlc_sent = true;
     }
-    
-    handles
-}
-
-fn run_all_nodes(mut node_list : NodeList) -> Vec<tokio::task::JoinHandle<NodeBox>>
-{
-    let mut handles : Vec<tokio::task::JoinHandle<NodeBox>> = Vec::new();
-
-    while !node_list.is_empty() {
-        let mut node = node_list.swap_remove(0);
-        handles.push(tokio::spawn(async move {
-            node.run().await;
-
-            node
-        }));
+    else
+    {
+      println!("Custom CTRL-C handler... terminating forcefully");
+      std::process::exit(1);
     }
-    
-    handles
+  }).unwrap();
 }
-
-
 
 #[tokio::main]
 async fn main() {
-    let gpio = Gpio::new().unwrap();
+  // Read configuration file
+  let config = config::read_from_disk().unwrap();
+  
+  // Create channel for CTRL-C
+  let (ctrlc_tx, _) = broadcast::channel(1);
 
-    // Create all nodes
-    let stepper = MotorStepper::new(&gpio, 1,2,3,4);
-    let controller = MotorController::new(&stepper);
+  // Create our nodes
+  println!("Creating nodes....");
+  let wheelcontrollers = wheelcontroller::create_all(&config, &ctrlc_tx);
+  let motioncontroller = motioncontroller::create(&config, &wheelcontrollers, ctrlc_tx.subscribe()).await;
 
-    // Push them into a list
-    let mut node_list = NodeList::new();
-    node_list.push(stepper);
-    node_list.push(controller);
+  // Handle CTRL-C
+  custom_ctrlc_handler(ctrlc_tx);
 
-    let handles = init_all_nodes(node_list);
-    let threads : NodeList = futures::future::join_all(handles).await.into_iter().map(|x| { x.unwrap() }).collect();
+  // Initialization
+  println!("Initializing nodes....");
+  let mut initHandles = Vec::<tokio::task::JoinHandle<crate::node::NodeResult>>::new();
+  for wc in &wheelcontrollers {
+    wc.once(wheelcontroller::init);
+  }
+  initHandles.push(motioncontroller.once(motioncontroller::init));
 
-    let handles2 = run_all_nodes(threads);
+  for result in futures::future::join_all(initHandles).await.iter() {
+    result.as_ref().unwrap().as_ref().unwrap();
+  }
 
-    futures::future::join_all(handles2).await;
+  // Run all nodes
+  println!("Running nodes....");
+  let mut runHandles = Vec::<tokio::task::JoinHandle<crate::node::NodeResult>>::new();
+  for wc in &wheelcontrollers {
+    wc.subscribe(wheelcontroller::wheel_speed_tx(wc).await.subscribe(), wheelcontroller::set_wheel_speed);
+  }
+  runHandles.push(motioncontroller.subscribe(motioncontroller::rx_move_command(&motioncontroller).await, motioncontroller::move_command));
+
+  let tx_move = motioncontroller::tx_move_command(&motioncontroller).await;
+  tx_move.send(MoveCommand::MoveAndAlign(
+    Vec2 { x: 0.0, y: 1.0 },
+    Vec2 { x: 1.0, y: 0.0 }
+  ));
+
+  futures::future::join_all(runHandles).await;
+
+  println!("Stopping nodes....");
+  futures::future::join_all(vec![
+    wheelcontrollers[0].once(wheelcontroller::reset_pins),
+  ]).await;
 }
 
 
