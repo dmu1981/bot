@@ -7,14 +7,14 @@ pub struct PerceptionState {
 
 pub type PerceptionNode = BotNode<PerceptionState>;
 
-pub fn init(mut state: tokio::sync::MutexGuard<'_, PerceptionState>) -> DynFut<'_, NodeResult>
+pub fn init(_state: tokio::sync::MutexGuard<'_, PerceptionState>) -> DynFut<'_, NodeResult>
 {
   Box::pin(async move {
     Ok(ThreadNext::Terminate)
   })
 }
 
-pub fn update(mut state: tokio::sync::MutexGuard<'_, PerceptionState>) -> DynFut<'_, NodeResult>
+pub fn update(_state: tokio::sync::MutexGuard<'_, PerceptionState>) -> DynFut<'_, NodeResult>
 {
   Box::pin(async move {
     Ok(ThreadNext::Next)
@@ -22,7 +22,7 @@ pub fn update(mut state: tokio::sync::MutexGuard<'_, PerceptionState>) -> DynFut
 }
 
 pub async fn create(
-  config: &Config,
+  _config: &Config,
   drop_tx: broadcast::Receiver<()>) -> PerceptionNode 
   {
     PerceptionNode::new(

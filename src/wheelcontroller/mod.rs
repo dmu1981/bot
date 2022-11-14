@@ -1,18 +1,10 @@
 use serde::{Serialize, Deserialize};
-use crate::math::Vec2;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WheelSpeed {
-  CW(f32),
-  CCW(f32),
+  Cw(f32),
+  Ccw(f32),
   Hold,
-}
-
-
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct WheelExtrinsics {
-  pub pivot: Vec2,
-  pub forward: Vec2
 }
 
 #[cfg(feature = "raspberry")]

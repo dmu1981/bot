@@ -1,17 +1,11 @@
 use std::sync::Arc;
 use tokio::sync::Mutex;
+use tokio::sync::broadcast::Receiver;
 use tokio::task::JoinHandle;
 use std::time::{Duration};
 use tokio::time::timeout;
-use async_trait::async_trait;
 use std::pin::Pin;
 use std::future::Future;
-
-#[async_trait]
-pub trait Node {
-    async fn init(&mut self) -> ();
-    async fn run(&mut self) -> ();
-}
 
 pub struct BotNode<T>{
   name : String,
@@ -33,18 +27,13 @@ pub struct ThreadError
 }
 
 pub type NodeResult = std::result::Result<ThreadNext, ThreadError>;
-
-/*impl<T> Drop for BotNode<T> {
-  fn drop(&mut self) {
-    println!("BotNode has dropped!");
-  }
-}*/
+pub type State<'a, T> = tokio::sync::MutexGuard<'a, T>;
 
 pub type DynFut<'lt, T> = 
   Pin<Box<dyn 'lt + Send + Future<Output = T>>>;
 
 impl<T> BotNode<T> {
-  pub fn new(name: String, drop_tx: tokio::sync::broadcast::Receiver<()>, state: T) -> BotNode<T> {
+  pub fn new(name: String, drop_tx: Receiver<()>, state: T) -> BotNode<T> {
     BotNode {
       name,
       drop: drop_tx,
@@ -53,30 +42,27 @@ impl<T> BotNode<T> {
   }
 
   pub fn direct_once(&self, 
-                callback: fn(tokio::sync::MutexGuard<T>) -> NodeResult) 
+                callback: fn(State<T>) -> NodeResult) 
                 -> JoinHandle<NodeResult> 
                where T: Send + 'static,
   {
     let handle = self.state.clone();
-    let mut drop_rx = self.drop.resubscribe();
-
-    let node_name = self.name.clone();
-
+    
     tokio::spawn(async move {
-      let mut state = handle.lock().await;
+      let state = handle.lock().await;
       callback(state)
     })
   }
 
   pub fn once(&self, 
-                     callback: fn(tokio::sync::MutexGuard<T>) -> DynFut<'_, NodeResult>)
+                     callback: fn(State<T>) -> DynFut<'_, NodeResult>)
                       -> JoinHandle<NodeResult> 
                where T: Send + 'static,
   {
     let handle = self.state.clone();
 
     tokio::spawn(async move {
-      let mut state = handle.lock().await;
+      let state = handle.lock().await;
       callback(state).await      
     })
   }
@@ -91,8 +77,6 @@ impl<T> BotNode<T> {
     let handle = self.state.clone();
     let mut drop_rx = self.drop.resubscribe();
 
-    let node_name = self.name.clone();
-
     let mut elapsed = Duration::from_millis(0);
 
     tokio::spawn(async move {
@@ -104,18 +88,15 @@ impl<T> BotNode<T> {
           sleep_duration = target_duration - elapsed;
         }
 
-        match timeout(sleep_duration, drop_rx.recv()).await {
-          Ok(_) => { 
-            break;
-          }
-          _ => { }
+        if timeout(sleep_duration, drop_rx.recv()).await.is_ok() {
+          break;
         }       
         
         // Start the timer
         let start_time = std::time::Instant::now();
 
         // Acquire a lock        
-        let mut state = handle.lock().await;
+        let state = handle.lock().await;
 
         // Callback
         match callback(state).await?
@@ -144,9 +125,6 @@ impl<T> BotNode<T> {
   {
     let handle = self.state.clone();
     let mut drop_rx = self.drop.resubscribe();
-
-    let node_name = self.name.clone();
-
     let mut elapsed = Duration::from_millis(0);
 
     tokio::spawn(async move {
@@ -159,18 +137,21 @@ impl<T> BotNode<T> {
         }
 
         // Wait for the interval to pass
-        match timeout(sleep_duration, drop_rx.recv()).await {
+        if timeout(sleep_duration, drop_rx.recv()).await.is_ok() {
+          break;
+        }
+        /*match timeout(sleep_duration, drop_rx.recv()).await {
           Ok(_) => { 
             break;
           }
           _ => { }
-        }       
+        } */      
 
         // Start the timer
         let start_time = std::time::Instant::now();
 
         // Acquire a lock
-        let mut state = handle.lock().await;
+        let state = handle.lock().await;
 
         // Callback
         match callback(state)?//.await
@@ -198,8 +179,6 @@ impl<T> BotNode<T> {
     let handle = self.state.clone();
     let mut drop_rx = self.drop.resubscribe();
 
-    let node_name = self.name.clone();
-
     tokio::spawn(async move {
       loop
       {
@@ -207,11 +186,12 @@ impl<T> BotNode<T> {
           value = rx.recv() => {
             match value {
               Ok(x) => {
-                let mut state = handle.lock().await;
+                let state = handle.lock().await;
                 match callback(x, state) {
-                  Continue => { },
-                  Interval => { panic!("Subscribe thread must not request an interval"); }
-                  terminate => { break; }
+                  Ok(ThreadNext::Next) => { },
+                  Ok(ThreadNext::Interval(_)) => { panic!("Subscribe thread must not request an interval"); }
+                  Ok(ThreadNext::Terminate) => { break; }
+                  Err(_) => { panic!("Thread callback returns err"); }
                 }
               },
               Err(_) => {
@@ -220,7 +200,7 @@ impl<T> BotNode<T> {
               }
             }
           }
-          value = drop_rx.recv() => {
+          _ = drop_rx.recv() => {
               break;
           }
         }        
@@ -240,8 +220,6 @@ impl<T> BotNode<T> {
     let handle = self.state.clone();
     let mut drop_rx = self.drop.resubscribe();
 
-    let node_name = self.name.clone();
-
     tokio::spawn(async move {
       loop
       {
@@ -249,10 +227,10 @@ impl<T> BotNode<T> {
           value = rx.recv() => {
             match value {
               Ok(x) => {
-                let mut state = handle.lock().await;
+                let state = handle.lock().await;
                 match callback(x, state).await? {
-                  next => { },
-                  terminate => { break; }
+                  ThreadNext::Next => { },
+                  _ => { break; }
                 }
               },
               Err(_) => {
@@ -261,7 +239,7 @@ impl<T> BotNode<T> {
               }
             }
           }
-          value = drop_rx.recv() => {
+          _ = drop_rx.recv() => {
               break;
           }
         }        

@@ -1,13 +1,11 @@
+#![allow(dead_code)]
 mod math;
 mod node;
-mod testnode;
-mod producernode;
 mod wheelcontroller;
 mod motioncontroller;
 mod config;
 mod perception;
 
-use std::time::Duration;
 use tokio::sync::broadcast;
 use math::Vec2;
 use motioncontroller::MoveCommand;
@@ -48,31 +46,31 @@ async fn main() {
 
   // Initialization
   println!("Initializing nodes....");
-  let mut initHandles = Vec::<tokio::task::JoinHandle<crate::node::NodeResult>>::new();
+  let mut init_handles = Vec::<tokio::task::JoinHandle<crate::node::NodeResult>>::new();
   for wc in &wheelcontrollers {
     wc.once(wheelcontroller::init);
   }
-  initHandles.push(motioncontroller.once(motioncontroller::init));
+  init_handles.push(motioncontroller.once(motioncontroller::init));
 
-  for result in futures::future::join_all(initHandles).await.iter() {
+  for result in futures::future::join_all(init_handles).await.iter() {
     result.as_ref().unwrap().as_ref().unwrap();
   }
 
   // Run all nodes
   println!("Running nodes....");
-  let mut runHandles = Vec::<tokio::task::JoinHandle<crate::node::NodeResult>>::new();
+  let mut run_handles = Vec::<tokio::task::JoinHandle<crate::node::NodeResult>>::new();
   for wc in &wheelcontrollers {
     wc.subscribe(wheelcontroller::wheel_speed_tx(wc).await.subscribe(), wheelcontroller::set_wheel_speed);
   }
-  runHandles.push(motioncontroller.subscribe(motioncontroller::rx_move_command(&motioncontroller).await, motioncontroller::move_command));
+  run_handles.push(motioncontroller.subscribe(motioncontroller::rx_move_command(&motioncontroller).await, motioncontroller::move_command));
 
   let tx_move = motioncontroller::tx_move_command(&motioncontroller).await;
   tx_move.send(MoveCommand::MoveAndAlign(
     Vec2 { x: 0.0, y: 1.0 },
     Vec2 { x: 1.0, y: 0.0 }
-  ));
+  )).unwrap();
 
-  futures::future::join_all(runHandles).await;
+  futures::future::join_all(run_handles).await;
 
   println!("Stopping nodes....");
   futures::future::join_all(vec![

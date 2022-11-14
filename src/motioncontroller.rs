@@ -1,10 +1,11 @@
-use crate::config::{Config, Wheel};
+use crate::config::Config;
 use crate::wheelcontroller::*;
 use crate::node::*;
-use tokio::sync::broadcast;
+use tokio::sync::broadcast::{Sender, Receiver};
 use crate::math::{Vec2, clamp, abs};
+use crate::config::WheelExtrinsics;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum MoveCommand
 {
   MoveAndAlign(Vec2, Vec2),
@@ -13,18 +14,18 @@ pub enum MoveCommand
 
 struct WheelInfo {
   wheel: WheelExtrinsics,
-  tx: broadcast::Sender<WheelSpeed>,
-  extrinsics_rx: broadcast::Receiver<WheelExtrinsics>
+  tx: Sender<WheelSpeed>,
+  extrinsics_rx: Receiver<WheelExtrinsics>
 }
 
 pub struct MotionControllerState {
   wheels: Vec<WheelInfo>,
-  tx: broadcast::Sender<MoveCommand>,
+  tx: Sender<MoveCommand>,
 }
 
 pub type MotionControllerNode = BotNode<MotionControllerState>;
 
-pub fn init(mut state: tokio::sync::MutexGuard<'_, MotionControllerState>) -> DynFut<'_, NodeResult>
+pub fn init(mut state: State<MotionControllerState>) -> DynFut<NodeResult>
 {
   Box::pin(async move {
     for wheel in &mut state.wheels {
@@ -37,7 +38,7 @@ pub fn init(mut state: tokio::sync::MutexGuard<'_, MotionControllerState>) -> Dy
   })
 }
 
-pub fn move_command(move_command: MoveCommand, mut state: tokio::sync::MutexGuard<'_, MotionControllerState>) -> DynFut<'_, NodeResult>
+pub fn move_command(move_command: MoveCommand, state: State<MotionControllerState>) -> DynFut<NodeResult>
 {
   Box::pin(async move {
     match move_command {
@@ -46,16 +47,16 @@ pub fn move_command(move_command: MoveCommand, mut state: tokio::sync::MutexGuar
           wheel.tx.send(WheelSpeed::Hold).unwrap();
         };
       },
-      MoveCommand::MoveAndAlign(position, orientation) => {
+      MoveCommand::MoveAndAlign(position, _) => {
         for wheel in &state.wheels {
           //println!("Forward is {:?}", wheel.wheel.forward);
           let v : f32 = clamp(wheel.wheel.forward.dot(&position), -1.0, 1.0);
           let speed = if abs(v) < 0.05 {
             WheelSpeed::Hold
           } else if v > 0.0 {
-            WheelSpeed::CW(v)
+            WheelSpeed::Cw(v)
           } else {
-            WheelSpeed::CCW(-v)
+            WheelSpeed::Ccw(-v)
           };
           //println!("Sending {:?}", speed);
           wheel.tx.send(speed).unwrap();
@@ -66,25 +67,24 @@ pub fn move_command(move_command: MoveCommand, mut state: tokio::sync::MutexGuar
   })
 }
 
-pub async fn tx_move_command(wc: &MotionControllerNode) -> tokio::sync::broadcast::Sender<MoveCommand> {
+pub async fn tx_move_command(wc: &MotionControllerNode) -> Sender<MoveCommand> {
   wc.state.lock().await.tx.clone()
 }
 
-pub async fn rx_move_command(wc: &MotionControllerNode) -> tokio::sync::broadcast::Receiver<MoveCommand> {
+pub async fn rx_move_command(wc: &MotionControllerNode) -> Receiver<MoveCommand> {
   wc.state.lock().await.tx.subscribe()
 }
 
 pub async fn create(
   config: &Config,
-  wheelcontrollers: &Vec<WheelControllerNode>,
-  drop_tx: broadcast::Receiver<()>) -> MotionControllerNode 
+  wheelcontrollers: &[WheelControllerNode],
+  drop_tx: Receiver<()>) -> MotionControllerNode 
   {
-    let (tx, rx) = tokio::sync::broadcast::channel::<MoveCommand>(4);
+    let (tx, _) = tokio::sync::broadcast::channel::<MoveCommand>(4);
 
     let mut wheels = Vec::<WheelInfo>::new();
 
-    let mut index = 0;
-    for wheel in &config.wheels {
+    for (index, wheel) in config.wheels.iter().enumerate() {
       wheels.push(WheelInfo {
         wheel: WheelExtrinsics {
           pivot: wheel.pivot.clone(),
@@ -93,8 +93,6 @@ pub async fn create(
         tx: crate::wheelcontroller::wheel_speed_tx(&wheelcontrollers[index]).await,
         extrinsics_rx: crate::wheelcontroller::wheel_extrinsics_tx(&wheelcontrollers[index]).await, 
       });
-
-      index = index + 1;
     }
 
     MotionControllerNode::new(

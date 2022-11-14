@@ -1,9 +1,13 @@
 use std::fs;
 use std::error::Error;
 use serde::{Serialize, Deserialize};
-use serde_yaml;
-
 use crate::math::Vec2;
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub struct WheelExtrinsics {
+  pub pivot: Vec2,
+  pub forward: Vec2
+}
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Wheel {
@@ -13,7 +17,7 @@ pub struct Wheel {
   pub forward: Vec2,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Simulation {
   pub url: String,
 }
