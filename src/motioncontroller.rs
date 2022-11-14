@@ -4,6 +4,7 @@ use crate::node::*;
 use tokio::sync::broadcast::{Sender, Receiver};
 use crate::math::{Vec2, clamp, abs};
 use crate::config::WheelExtrinsics;
+//use async_trait::async_trait;
 
 #[derive(Clone, Debug)]
 pub enum MoveCommand
@@ -75,10 +76,14 @@ pub async fn rx_move_command(wc: &MotionControllerNode) -> Receiver<MoveCommand>
   wc.state.lock().await.tx.subscribe()
 }
 
+pub struct MyNode {
+  pub node : MotionControllerNode,
+}
+
 pub async fn create(
   config: &Config,
   wheelcontrollers: &[WheelControllerNode],
-  drop_tx: Receiver<()>) -> MotionControllerNode 
+  drop_tx: Receiver<()>) -> MyNode 
   {
     let (tx, _) = tokio::sync::broadcast::channel::<MoveCommand>(4);
 
@@ -95,25 +100,43 @@ pub async fn create(
       });
     }
 
-    MotionControllerNode::new(
-      "Motion Controller".to_string(), 
-      drop_tx, 
-      MotionControllerState {
-        wheels,
-        tx
-      }
-    )
+    MyNode {
+      node: MotionControllerNode::new(
+        "Motion Controller".to_string(), 
+        drop_tx, 
+        MotionControllerState {
+          wheels,
+          tx
+        }
+      )
+    }
+    
   }
 
-pub async fn init(
-    motion_controller : &MotionControllerNode) -> Handles
-{
-  vec![motion_controller.once(init_node)]
+//#[async_trait]
+impl Executor<MotionControllerNode> for MyNode {
+  fn init(&self) -> DynFut<'_, Handles>
+  {
+    Box::pin(async move {
+      vec![self.node.once(init_node)]
+    })
+  }
+
+  fn run(&self) -> DynFut<'_, Handles>
+  {
+    Box::pin(async move {
+      vec![self.node.subscribe(rx_move_command(&self.node).await, move_command)]
+    })
+  }
+
+  fn stop(&self) -> DynFut<'_, Handles>
+  {
+    Box::pin(async move {
+      vec![]
+    })
+  }
 }
 
-pub async fn run(
-  motion_controller : &MotionControllerNode) -> Handles 
-{
-  vec![motion_controller.subscribe(rx_move_command(&motion_controller).await, move_command)]
-}
+
+
 

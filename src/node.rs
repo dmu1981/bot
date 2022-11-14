@@ -6,6 +6,7 @@ use std::time::{Duration};
 use tokio::time::timeout;
 use std::pin::Pin;
 use std::future::Future;
+//use async_trait::async_trait;
 
 pub struct BotNode<T>{
   name : String,
@@ -21,7 +22,6 @@ pub enum ThreadNext
 }
 
 pub type NodeHandle = JoinHandle<NodeResult>;
-
 pub type Handles = Vec::<NodeHandle>;
 
 pub async fn execute(handles : Handles) {
@@ -38,9 +38,13 @@ pub struct ThreadError
 
 pub type NodeResult = std::result::Result<ThreadNext, ThreadError>;
 pub type State<'a, T> = tokio::sync::MutexGuard<'a, T>;
+pub type DynFut<'lt, T> = Pin<Box<dyn 'lt + Send + Future<Output = T>>>;
 
-pub type DynFut<'lt, T> = 
-  Pin<Box<dyn 'lt + Send + Future<Output = T>>>;
+pub trait Executor<T> {
+  fn init(&self) -> DynFut<'_, Handles>;
+  fn run(&self) -> DynFut<'_, Handles>;
+  fn stop(&self) -> DynFut<'_, Handles>;
+}
 
 impl<T> BotNode<T> {
   pub fn new(name: String, drop_tx: Receiver<()>, state: T) -> BotNode<T> {

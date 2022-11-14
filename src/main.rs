@@ -9,7 +9,7 @@ mod perception;
 use tokio::sync::broadcast;
 use math::Vec2;
 use motioncontroller::MoveCommand;
-use node::{execute, Handles};
+use node::{execute, Handles, Executor};
 
 fn custom_ctrlc_handler(ctrlc_tx : broadcast::Sender<()>)
 {
@@ -49,27 +49,25 @@ async fn main() {
   println!("Initializing nodes....");
   let mut init_handles = Handles::new();
   init_handles.append(&mut wheelcontroller::init(&wheelcontrollers).await);
-  init_handles.append(&mut motioncontroller::init(&motioncontroller).await);
+  init_handles.append(&mut motioncontroller.init().await);
   execute(init_handles).await;
 
   // Run all nodes
   println!("Running nodes....");
   let mut run_handles = Handles::new();
   run_handles.append(&mut wheelcontroller::run(&wheelcontrollers).await);
-  run_handles.append(&mut motioncontroller::run(&motioncontroller).await);
+  run_handles.append(&mut motioncontroller.run().await);
 
-  let tx_move = motioncontroller::tx_move_command(&motioncontroller).await;
+  let tx_move = motioncontroller::tx_move_command(&motioncontroller.node).await;
   tx_move.send(MoveCommand::MoveAndAlign(
     Vec2 { x: 0.0, y: 1.0 },
     Vec2 { x: 1.0, y: 0.0 }
   )).unwrap();
-
   execute(run_handles).await;
   
   println!("Stopping nodes....");
   let mut stop_handles = Handles::new();
-  wheelcontroller::stop(&wheelcontrollers, &mut stop_handles).await;
-
+  stop_handles.append(&mut wheelcontroller::stop(&wheelcontrollers).await);
   execute(stop_handles).await;
 }
 

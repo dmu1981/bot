@@ -121,12 +121,13 @@ pub async fn run(wheel_controller : &Vec::<WheelControllerNode>) -> Handles
   handles
 }
 
-pub async fn stop(wheel_controller : &Vec::<WheelControllerNode>, 
-                     handles : &mut Handles) 
+pub async fn stop(wheel_controller : &Vec::<WheelControllerNode>) -> Handles
 {
+  let mut handles = Handles::new();
   for wc in wheel_controller {
     handles.push(wc.once(reset_pins));
   }
+  handles
 }
 
 
