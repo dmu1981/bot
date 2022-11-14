@@ -9,6 +9,7 @@ mod perception;
 use tokio::sync::broadcast;
 use math::Vec2;
 use motioncontroller::MoveCommand;
+use node::{execute, Handles};
 
 fn custom_ctrlc_handler(ctrlc_tx : broadcast::Sender<()>)
 {
@@ -46,23 +47,16 @@ async fn main() {
 
   // Initialization
   println!("Initializing nodes....");
-  let mut init_handles = Vec::<tokio::task::JoinHandle<crate::node::NodeResult>>::new();
-  for wc in &wheelcontrollers {
-    wc.once(wheelcontroller::init);
-  }
-  init_handles.push(motioncontroller.once(motioncontroller::init));
-
-  for result in futures::future::join_all(init_handles).await.iter() {
-    result.as_ref().unwrap().as_ref().unwrap();
-  }
+  let mut init_handles = Handles::new();
+  init_handles.append(&mut wheelcontroller::init(&wheelcontrollers).await);
+  init_handles.append(&mut motioncontroller::init(&motioncontroller).await);
+  execute(init_handles).await;
 
   // Run all nodes
   println!("Running nodes....");
-  let mut run_handles = Vec::<tokio::task::JoinHandle<crate::node::NodeResult>>::new();
-  for wc in &wheelcontrollers {
-    wc.subscribe(wheelcontroller::wheel_speed_tx(wc).await.subscribe(), wheelcontroller::set_wheel_speed);
-  }
-  run_handles.push(motioncontroller.subscribe(motioncontroller::rx_move_command(&motioncontroller).await, motioncontroller::move_command));
+  let mut run_handles = Handles::new();
+  run_handles.append(&mut wheelcontroller::run(&wheelcontrollers).await);
+  run_handles.append(&mut motioncontroller::run(&motioncontroller).await);
 
   let tx_move = motioncontroller::tx_move_command(&motioncontroller).await;
   tx_move.send(MoveCommand::MoveAndAlign(
@@ -70,12 +64,13 @@ async fn main() {
     Vec2 { x: 1.0, y: 0.0 }
   )).unwrap();
 
-  futures::future::join_all(run_handles).await;
-
+  execute(run_handles).await;
+  
   println!("Stopping nodes....");
-  futures::future::join_all(vec![
-    wheelcontrollers[0].once(wheelcontroller::reset_pins),
-  ]).await;
+  let mut stop_handles = Handles::new();
+  wheelcontroller::stop(&wheelcontrollers, &mut stop_handles).await;
+
+  execute(stop_handles).await;
 }
 
 

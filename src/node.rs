@@ -20,6 +20,16 @@ pub enum ThreadNext
   Terminate
 }
 
+pub type NodeHandle = JoinHandle<NodeResult>;
+
+pub type Handles = Vec::<NodeHandle>;
+
+pub async fn execute(handles : Handles) {
+  for result in futures::future::join_all(handles).await.iter() {
+    result.as_ref().unwrap().as_ref().unwrap();
+  }
+}
+
 #[derive(Debug, Clone)]
 pub struct ThreadError
 {
@@ -76,7 +86,6 @@ impl<T> BotNode<T> {
   {
     let handle = self.state.clone();
     let mut drop_rx = self.drop.resubscribe();
-
     let mut elapsed = Duration::from_millis(0);
 
     tokio::spawn(async move {

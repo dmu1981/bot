@@ -16,7 +16,7 @@ pub struct WheelControllerState {
 
 pub type WheelControllerNode = BotNode<WheelControllerState>;
 
-pub fn init(mut state: State<WheelControllerState>) -> DynFut<NodeResult>
+pub fn init_node(mut state: State<WheelControllerState>) -> DynFut<NodeResult>
 {
   Box::pin(async move {
     state.extrinsics = serde_json::from_str(
@@ -103,6 +103,31 @@ pub fn create_all(
     controller
   }
 
+pub async fn init(wheel_controller : &Vec::<WheelControllerNode>) -> Handles                     
+{
+  let mut handles = Handles::new();
+  for wc in wheel_controller {
+    handles.push(wc.once(init_node));
+  }
+  handles
+}
+
+pub async fn run(wheel_controller : &Vec::<WheelControllerNode>) -> Handles 
+{
+  let mut handles = Handles::new();
+  for wc in wheel_controller {
+    handles.push(wc.subscribe(wheel_speed_tx(wc).await.subscribe(), set_wheel_speed));
+  }
+  handles
+}
+
+pub async fn stop(wheel_controller : &Vec::<WheelControllerNode>, 
+                     handles : &mut Handles) 
+{
+  for wc in wheel_controller {
+    handles.push(wc.once(reset_pins));
+  }
+}
 
 
 

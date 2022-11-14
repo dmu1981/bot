@@ -25,7 +25,7 @@ pub struct MotionControllerState {
 
 pub type MotionControllerNode = BotNode<MotionControllerState>;
 
-pub fn init(mut state: State<MotionControllerState>) -> DynFut<NodeResult>
+pub fn init_node(mut state: State<MotionControllerState>) -> DynFut<NodeResult>
 {
   Box::pin(async move {
     for wheel in &mut state.wheels {
@@ -104,3 +104,16 @@ pub async fn create(
       }
     )
   }
+
+pub async fn init(
+    motion_controller : &MotionControllerNode) -> Handles
+{
+  vec![motion_controller.once(init_node)]
+}
+
+pub async fn run(
+  motion_controller : &MotionControllerNode) -> Handles 
+{
+  vec![motion_controller.subscribe(rx_move_command(&motion_controller).await, move_command)]
+}
+
