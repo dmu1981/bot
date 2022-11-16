@@ -1,10 +1,10 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WheelSpeed {
-  Cw(f32),
-  Ccw(f32),
-  Hold,
+    Cw(f32),
+    Ccw(f32),
+    Hold,
 }
 
 #[cfg(feature = "raspberry")]
