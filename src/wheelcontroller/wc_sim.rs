@@ -1,7 +1,8 @@
 use crate::config::WheelExtrinsics;
 use crate::config::*;
+use crate::math::clamp;
 use crate::node::*;
-use crate::wheelcontroller::WheelSpeed;
+//use crate::wheelcontroller::WheelSpeed;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::broadcast::{Receiver, Sender};
@@ -13,13 +14,13 @@ struct WheelControllerState {
     url: String,
     client: reqwest::Client,
     extrinsics: WheelExtrinsics,
-    speed: WheelSpeed,
+    speed: f32,
     extrinsics_tx: Sender<WheelExtrinsics>,
     drop_tx: Sender<()>,
 }
 
 pub struct WheelControllerNode {
-    pub wheelspeed_tx: Sender<crate::wheelcontroller::WheelSpeed>,
+    pub wheelspeed_tx: Sender<f32>,
     pub extrinsics_rx: Receiver<WheelExtrinsics>,
 
     drop_rx: Receiver<()>,
@@ -60,22 +61,20 @@ fn init_node(mut state: State<WheelControllerState>) -> DynFut<NodeResult> {
 }
 
 fn set_wheel_speed(
-    wheel_speed: WheelSpeed,
+    mut wheel_speed: f32,
     mut state: State<WheelControllerState>,
 ) -> DynFut<NodeResult> {
     Box::pin(async move {
-        let flat_speed = match wheel_speed {
-            WheelSpeed::Cw(x) => x,
-            WheelSpeed::Ccw(x) => -x,
-            WheelSpeed::Hold => 0.0,
-        };
+        wheel_speed = clamp(wheel_speed, -1.0, 1.0);
+
         state
             .client
             .post(&state.url)
-            .body(serde_json::to_string(&flat_speed).unwrap())
+            .body(serde_json::to_string(&wheel_speed).unwrap())
             .send()
             .await
             .unwrap();
+
         state.speed = wheel_speed;
 
         Ok(ThreadNext::Next)
@@ -103,7 +102,7 @@ fn create(
     url: &str,
     drop_tx: Sender<()>,
 ) -> WheelControllerNode {
-    let (tx, _) = tokio::sync::broadcast::channel::<WheelSpeed>(4);
+    let (tx, _) = tokio::sync::broadcast::channel::<f32>(4);
     let (tx2, _) = tokio::sync::broadcast::channel::<WheelExtrinsics>(1);
 
     WheelControllerNode {
@@ -119,8 +118,7 @@ fn create(
                 forward: wheel.forward.clone(),
             },
             url: url.to_owned() + "/wheel/" + name,
-            speed: WheelSpeed::Hold,
-            //tx,
+            speed: 0.0,
             extrinsics_tx: tx2,
         })),
     }
@@ -142,22 +140,6 @@ pub fn create_all(config: &Config, drop_tx: Sender<()>) -> MyNode {
 
     controller
 }
-/*
-pub async fn run(wheel_controller: &Vec<WheelControllerNode>) -> Handles {
-    let mut handles = Handles::new();
-    for wc in wheel_controller {
-        handles.push(wc.subscribe(wc.wheelspeed_tx.subscribe(), set_wheel_speed));
-    }
-    handles
-}
-
-pub async fn stop(wheel_controller: &Vec<WheelControllerNode>) -> Handles {
-    let mut handles = Handles::new();
-    for wc in wheel_controller {
-        handles.push(wc.once(reset_pins));
-    }
-    handles
-}*/
 
 #[async_trait]
 impl Executor for MyNode {

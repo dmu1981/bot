@@ -95,8 +95,6 @@ pub trait Node<T> {
                     sleep_duration = target_duration - elapsed;
                 }
 
-                //println!("Sleep duration is {:?}", sleep_duration);
-
                 if timeout(sleep_duration, drop_rx.recv()).await.is_ok() {
                     break;
                 }

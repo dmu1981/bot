@@ -1,11 +1,12 @@
-use serde::{Deserialize, Serialize};
+//use serde::{Deserialize, Serialize};
 
+/*
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WheelSpeed {
     Cw(f32),
     Ccw(f32),
     Hold,
-}
+}*/
 
 #[cfg(feature = "raspberry")]
 pub mod wc_gpio;

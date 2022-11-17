@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 mod behavior;
 mod config;
+mod kicker;
 mod math;
 mod motioncontroll;
 mod node;
@@ -49,12 +50,7 @@ async fn main() {
         motioncontroller.movecommand_tx.clone(),
         ctrlc_tx.clone(),
     );
-
-    /*let tx_move = motioncontroller::tx_move_command(&motioncontroller.node).await;
-    tx_move.send(MoveCommand::MoveAndAlign(
-      Vec2 { x: 0.0, y: 1.0 },
-      Vec2 { x: 1.0, y: 0.0 }
-    )).unwrap();*/
+    let kicker = kicker::create(&config, ctrlc_tx.clone());
 
     // Handle CTRL-C
     custom_ctrlc_handler(ctrlc_tx);
@@ -65,6 +61,7 @@ async fn main() {
         Box::new(motioncontroller),
         Box::new(perception),
         Box::new(behavior),
+        Box::new(kicker),
     ])
     .await;
 }

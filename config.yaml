@@ -32,4 +32,4 @@ wheels:
       x: 0.0
       y: 0.0
 simulation:
-  url: "http://192.168.178.33:4444"  
+  url: "http://127.0.0.1:4444"  

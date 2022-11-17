@@ -1,6 +1,6 @@
 use crate::config::Config;
 use crate::config::WheelExtrinsics;
-use crate::math::{abs, clamp, Vec2};
+use crate::math::{clamp, Vec2};
 use crate::node::*;
 use crate::wheelcontroller::*;
 use async_trait::async_trait;
@@ -16,7 +16,7 @@ pub enum MoveCommand {
 
 struct WheelInfo {
     wheel: WheelExtrinsics,
-    tx: Sender<WheelSpeed>,
+    tx: Sender<f32>,
     extrinsics_rx: Receiver<WheelExtrinsics>,
 }
 
@@ -63,22 +63,15 @@ fn move_command(
         match move_command {
             MoveCommand::Stop => {
                 for wheel in &state.wheels {
-                    wheel.tx.send(WheelSpeed::Hold).unwrap();
+                    wheel.tx.send(0.0).unwrap();
                 }
             }
             MoveCommand::MoveAndAlign(position, _) => {
                 for wheel in &state.wheels {
                     //println!("Forward is {:?}", wheel.wheel.forward);
                     let v: f32 = clamp(wheel.wheel.forward.dot(&position.normalize()), -1.0, 1.0);
-                    let speed = if abs(v) < 0.05 {
-                        WheelSpeed::Hold
-                    } else if v > 0.0 {
-                        WheelSpeed::Cw(v)
-                    } else {
-                        WheelSpeed::Ccw(-v)
-                    };
-                    //println!("Sending {:?}", speed);
-                    wheel.tx.send(speed).unwrap();
+
+                    wheel.tx.send(v).unwrap();
                 }
             }
         }
