@@ -2,8 +2,6 @@ pub mod vec2;
 
 pub use vec2::Vec2;
 
-
-
 pub fn min(a: f32, b: f32) -> f32 {
     if a < b {
         a

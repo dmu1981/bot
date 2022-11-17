@@ -41,7 +41,7 @@ pub trait BTNode<'a, T> {
 
     fn tick(&'a mut self, blackboard: &'a mut Box<T>) -> BTResult {
         if let BTDecoratorResult::Failure = self.check_decorators(blackboard) {
-          return BTResult::Failure;
+            return BTResult::Failure;
         };
 
         self.internal_tick(blackboard)
@@ -53,9 +53,9 @@ pub trait BTNode<'a, T> {
 
     fn check_decorators(&self, blackboard: &T) -> BTDecoratorResult {
         for decorator in self.get_decorators() {
-          if let BTDecoratorResult::Failure = decorator.evaluate(blackboard) {
-            return BTDecoratorResult::Failure;
-          }
+            if let BTDecoratorResult::Failure = decorator.evaluate(blackboard) {
+                return BTDecoratorResult::Failure;
+            }
         }
 
         BTDecoratorResult::Success

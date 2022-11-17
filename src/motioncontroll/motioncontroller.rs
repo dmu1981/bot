@@ -79,8 +79,8 @@ fn move_command(
 
                 pos_norm -= state.velocity_momentum;
 
-                const MAGIC_DEGREE_CONSTANT : f32 = 8.0; // Magic constant describing how quickly robot rotates based on accumulated momentum
-                const MAGIC_VELOCITY_CONSTANT : f32 = 0.5; // Magic constant describing how quickly velocity accumulates
+                const MAGIC_DEGREE_CONSTANT: f32 = 8.0; // Magic constant describing how quickly robot rotates based on accumulated momentum
+                const MAGIC_VELOCITY_CONSTANT: f32 = 0.5; // Magic constant describing how quickly velocity accumulates
                 let angle = state.rotate_momentum * MAGIC_DEGREE_CONSTANT * elapsed_s;
                 let c = angle.cos();
                 let s = angle.sin();
@@ -88,8 +88,9 @@ fn move_command(
                 let y = state.velocity_momentum.x * s + state.velocity_momentum.y * c;
                 state.velocity_momentum = Vec2 { x, y };
                 let velocity_factor = clamp(elapsed_s * MAGIC_VELOCITY_CONSTANT, 0.0, 1.0);
-                state.velocity_momentum = state.velocity_momentum * (1.0 - velocity_factor) + pos_norm * velocity_factor;
-                
+                state.velocity_momentum =
+                    state.velocity_momentum * (1.0 - velocity_factor) + pos_norm * velocity_factor;
+
                 let mut rotate: f32;
                 if ori_norm.y > 0.0 {
                     rotate = min(ori_norm.x, 1.0 - ori_norm.y);
@@ -97,17 +98,18 @@ fn move_command(
                         rotate *= 0.9;
                     }
                 } else if ori_norm.x > 0.0 {
-                        rotate = 1.0;
+                    rotate = 1.0;
                 } else {
-                        rotate = -1.0;
+                    rotate = -1.0;
                 }
 
                 // Calculate a basic momentum term to compensate for overshooting
-                rotate -= state.rotate_momentum;      
+                rotate -= state.rotate_momentum;
 
-                const MAGIC_ROTATION_CONSTANT : f32 = 5.0; // Magic constant describing how quickly momentum accumulates
+                const MAGIC_ROTATION_CONSTANT: f32 = 5.0; // Magic constant describing how quickly momentum accumulates
                 let rotate_factor = clamp(elapsed_s * MAGIC_ROTATION_CONSTANT, 0.0, 1.0);
-                state.rotate_momentum = state.rotate_momentum * (1.0 - rotate_factor) + rotate * rotate_factor;
+                state.rotate_momentum =
+                    state.rotate_momentum * (1.0 - rotate_factor) + rotate * rotate_factor;
 
                 state.last_change = std::time::Instant::now();
 
