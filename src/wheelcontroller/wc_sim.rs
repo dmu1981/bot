@@ -114,8 +114,8 @@ fn create(
             drop_tx,
             client: reqwest::Client::new(),
             extrinsics: WheelExtrinsics {
-                pivot: wheel.pivot.clone(),
-                forward: wheel.forward.clone(),
+                pivot: wheel.pivot,
+                forward: wheel.forward,
             },
             url: url.to_owned() + "/wheel/" + name,
             speed: 0.0,

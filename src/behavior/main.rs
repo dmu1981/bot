@@ -27,10 +27,7 @@ fn on_perception(perception: PerceptionMessage, state: State<BehaviorState>) -> 
 
         state
             .movecommand_tx
-            .send(MoveCommand::MoveAndAlign(
-                ball,
-                goal,
-            ))
+            .send(MoveCommand::MoveAndAlign(ball, goal))
             .unwrap();
 
         Ok(ThreadNext::Next)

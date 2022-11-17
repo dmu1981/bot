@@ -38,7 +38,7 @@ struct DetectorResponse {
 impl DetectorResponse {
     fn to_option(&self) -> Option<Vec2> {
         if self.detected {
-            Some(self.position.clone())
+            Some(self.position)
         } else {
             None
         }
@@ -83,16 +83,16 @@ fn query_simulation(mut state: State<PerceptionState>) -> DynFut<NodeResult> {
             .perception_tx
             .send(PerceptionMessage {
                 ball: Measurement {
-                    position: state.last_ball_position.clone(),
+                    position: state.last_ball_position,
                 },
                 own_goal: Measurement {
-                    position: state.last_owngoal_position.clone(),
+                    position: state.last_owngoal_position,
                 },
                 target_goal: Measurement {
-                    position: state.last_targetgoal_position.clone(),
+                    position: state.last_targetgoal_position,
                 },
                 boundary: Measurement {
-                    position: state.last_boundary_position.clone(),
+                    position: state.last_boundary_position,
                 },
             })
             .unwrap();

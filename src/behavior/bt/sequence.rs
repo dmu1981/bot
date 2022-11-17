@@ -10,7 +10,7 @@ impl<'a, T> BTSequence<'a, T> {
     fn new(nodes: Vec<BoxedNode<'a, T>>) -> BTSequence<'a, T> {
         BTSequence {
             decorators: Vec::<BoxedDecorator<T>>::new(),
-            nodes: nodes,
+            nodes,
             index: 0,
         }
     }
@@ -22,7 +22,7 @@ impl<'a, T> BTNode<'a, T> for BTSequence<'a, T> {
     }
 
     fn get_decorators(&self) -> Iter<Box<dyn BTDecorator<T>>> {
-        return self.decorators.iter();
+        self.decorators.iter()
     }
 
     fn internal_tick(&'a mut self, blackboard: &'a mut Box<T>) -> BTResult {
@@ -47,7 +47,7 @@ impl<'a, T> BTNode<'a, T> for BTSequence<'a, T> {
             }
         }
         {
-            return BTResult::Failure;
+            BTResult::Failure
         }
     }
 }

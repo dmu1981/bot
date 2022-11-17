@@ -20,7 +20,7 @@ impl<'a, T> BTNode<'a, T> for BTAction<'a, T> {
     fn reset(&'a mut self) {}
 
     fn get_decorators(&self) -> Iter<BoxedDecorator<T>> {
-        return self.decorators.iter();
+        self.decorators.iter()
     }
 
     fn internal_tick(&'a mut self, blackboard: &'a mut Box<T>) -> BTResult {
