@@ -3,13 +3,13 @@ use crate::behavior::bt::*;
 struct BTSequence<'a, T> {
     nodes: Vec<BoxedNode<'a, T>>,
     index: usize,
-    decorators: Vec<BoxedDecorator<'a, T>>,
+    decorators: Vec<BoxedDecorator<T>>,
 }
 
 impl<'a, T> BTSequence<'a, T> {
     fn new(nodes: Vec<BoxedNode<'a, T>>) -> BTSequence<'a, T> {
         BTSequence {
-            decorators: Vec::<BoxedDecorator<'a, T>>::new(),
+            decorators: Vec::<BoxedDecorator<T>>::new(),
             nodes: nodes,
             index: 0,
         }
@@ -21,7 +21,7 @@ impl<'a, T> BTNode<'a, T> for BTSequence<'a, T> {
         self.index = 0;
     }
 
-    fn get_decorators(&'a self) -> Iter<BoxedDecorator<'a, T>> {
+    fn get_decorators(&self) -> Iter<Box<dyn BTDecorator<T>>> {
         return self.decorators.iter();
     }
 

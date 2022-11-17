@@ -12,7 +12,7 @@ pub enum BTDecoratorResult {
 }
 
 type BoxedNode<'a, T> = Box<dyn BTNode<'a, T>>;
-type BoxedDecorator<'a, T> = Box<dyn BTDecorator<'a, T>>;
+type BoxedDecorator<T> = Box<dyn BTDecorator<T>>;
 
 pub struct BehaviorTree<'a, T> {
     blackboard: Box<T>,
@@ -52,9 +52,9 @@ pub trait BTNode<'a, T> {
 
     fn internal_tick(&'a mut self, blackboard: &'a mut Box<T>) -> BTResult;
 
-    fn get_decorators(&'a self) -> Iter<BoxedDecorator<'a, T>>;
+    fn get_decorators(&self) -> Iter<Box<dyn BTDecorator<T>>>;
 
-    fn check_decorators(&'a self, blackboard: &'a Box<T>) -> BTDecoratorResult {
+    fn check_decorators(&self, blackboard: &Box<T>) -> BTDecoratorResult {
         for decorator in self.get_decorators() {
             match decorator.evaluate(blackboard) {
                 BTDecoratorResult::Failure => {
@@ -68,8 +68,8 @@ pub trait BTNode<'a, T> {
     }
 }
 
-pub trait BTDecorator<'a, T> {
-    fn evaluate(&'a self, blackboard: &'a Box<T>) -> BTDecoratorResult;
+pub trait BTDecorator<T> {
+    fn evaluate(&self, blackboard: &Box<T>) -> BTDecoratorResult;
 }
 
 pub mod action;

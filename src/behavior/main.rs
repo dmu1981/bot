@@ -1,4 +1,3 @@
-use crate::math::Vec2;
 use crate::motioncontroll::MoveCommand;
 use crate::node::*;
 use crate::perception::PerceptionMessage;
@@ -23,18 +22,16 @@ fn on_perception(perception: PerceptionMessage, state: State<BehaviorState>) -> 
             panic!("Cannot handle missing measurements yet.");
         }
 
-        //let ball = perception.ball.position.or_else(|| -> Vec2 { x: 0.0, y: 0.0 });
-        //let goal = perception.target_goal.position.or_else(|| -> Vec2 { x: 0.0, y: 0.0 });
+        let ball = perception.ball.position.unwrap();
+        let goal = perception.target_goal.position.unwrap();
 
-        if let Some(ball_position) = perception.ball.position {
-            state
-                .movecommand_tx
-                .send(MoveCommand::MoveAndAlign(
-                    ball_position,
-                    Vec2 { x: 0.0, y: 1.0 },
-                ))
-                .unwrap();
-        }
+        state
+            .movecommand_tx
+            .send(MoveCommand::MoveAndAlign(
+                ball,
+                goal,
+            ))
+            .unwrap();
 
         Ok(ThreadNext::Next)
     })

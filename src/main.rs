@@ -8,10 +8,8 @@ mod node;
 mod perception;
 mod wheelcontroller;
 
-use tokio::sync::broadcast;
-//use math::Vec2;
-//use motioncontroller::MoveCommand;
 use node::execute_nodes;
+use tokio::sync::broadcast;
 
 fn custom_ctrlc_handler(ctrlc_tx: broadcast::Sender<()>) {
     let mut ctrlc_sent = false;

@@ -66,12 +66,19 @@ fn move_command(
                     wheel.tx.send(0.0).unwrap();
                 }
             }
-            MoveCommand::MoveAndAlign(position, _) => {
+            MoveCommand::MoveAndAlign(position, _orientation) => {
+                //let pos_norm = position.normalize();
+                //let ori_norm = position.normalize();
+                
                 for wheel in &state.wheels {
-                    //println!("Forward is {:?}", wheel.wheel.forward);
-                    let v: f32 = clamp(wheel.wheel.forward.dot(&position.normalize()), -1.0, 1.0);
+                    
+                    let movement: f32 = clamp(
+                        wheel.wheel.forward.dot(&position.normalize()), -1.0, 1.0);
 
-                    wheel.tx.send(v).unwrap();
+                    /*let rotation: f32 = clamp(
+                        wheel.wheel.forward.dot(&position.normalize()), -1.0, 1.0);*/
+
+                    wheel.tx.send(movement).unwrap();
                 }
             }
         }
