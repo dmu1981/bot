@@ -1,14 +1,14 @@
 use crate::behavior::bt::*;
 
-type ActionCallback<'a, T> = fn(&'a mut Box<T>) -> BTResult;
+type ActionCallback<T> = fn(&mut Box<T>) -> BTResult;
 
-struct BTAction<'a, T> {
-    callback: ActionCallback<'a, T>,
+pub struct BTAction<T> {
+    callback: ActionCallback<T>,
     decorators: Vec<BoxedDecorator<T>>,
 }
 
-impl<'a, T> BTAction<'a, T> {
-    fn new(callback: ActionCallback<'a, T>) -> BTAction<'a, T> {
+impl<T> BTAction<T> {
+    pub fn new(callback: ActionCallback<T>) -> BTAction<T> {
         BTAction {
             decorators: Vec::<BoxedDecorator<T>>::new(),
             callback,
@@ -16,14 +16,14 @@ impl<'a, T> BTAction<'a, T> {
     }
 }
 
-impl<'a, T> BTNode<'a, T> for BTAction<'a, T> {
-    fn reset(&'a mut self) {}
+impl<T> BTNode<T> for BTAction<T> {
+    fn reset(&mut self) {}
 
     fn get_decorators(&self) -> Iter<BoxedDecorator<T>> {
         self.decorators.iter()
     }
 
-    fn internal_tick(&'a mut self, blackboard: &'a mut Box<T>) -> BTResult {
+    fn internal_tick(&mut self, blackboard: &mut Box<T>) -> BTResult {
         (self.callback)(blackboard)
     }
 }

@@ -1,3 +1,5 @@
+use crate::behavior::bt::*;
+use crate::math::Vec2;
 use crate::motioncontroll::MoveCommand;
 use crate::node::*;
 use crate::perception::PerceptionMessage;
@@ -6,8 +8,14 @@ use std::sync::Arc;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 
+struct MyBlackboard {
+    ball: Vec2,
+    target_goal: Vec2,
+}
+
 struct BehaviorState {
     movecommand_tx: Sender<MoveCommand>,
+    tree: BehaviorTree<MyBlackboard>,
 }
 
 pub struct BehaviorNode {
@@ -34,15 +42,29 @@ fn on_perception(perception: PerceptionMessage, state: State<BehaviorState>) -> 
     })
 }
 
+fn cb(_bb: &mut Box<MyBlackboard>) -> BTResult {
+    BTResult::Pending
+}
+
 pub fn create(
     perception_rx: Receiver<PerceptionMessage>,
     movecommand_tx: Sender<MoveCommand>,
     drop_tx: Sender<()>,
 ) -> BehaviorNode {
+    let bb = MyBlackboard {
+        ball: Vec2 { x: 0.0, y: 0.0 },
+        target_goal: Vec2 { x: 0.0, y: 0.0 },
+    };
+    let root = BTAction::<MyBlackboard>::new(cb);
+
+    let tree = BehaviorTree::new(Box::new(root), Box::new(bb));
     BehaviorNode {
         drop_rx: drop_tx.subscribe(),
         perception_rx,
-        state: Arc::new(Mutex::new(BehaviorState { movecommand_tx })),
+        state: Arc::new(Mutex::new(BehaviorState {
+            movecommand_tx,
+            tree,
+        })),
     }
 }
 

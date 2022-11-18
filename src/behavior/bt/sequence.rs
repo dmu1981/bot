@@ -1,13 +1,13 @@
 use crate::behavior::bt::*;
 
-struct BTSequence<'a, T> {
-    nodes: Vec<BoxedNode<'a, T>>,
+struct BTSequence<T> {
+    nodes: Vec<BoxedNode<T>>,
     index: usize,
     decorators: Vec<BoxedDecorator<T>>,
 }
 
-impl<'a, T> BTSequence<'a, T> {
-    fn new(nodes: Vec<BoxedNode<'a, T>>) -> BTSequence<'a, T> {
+impl<T> BTSequence<T> {
+    fn new(nodes: Vec<BoxedNode<T>>) -> BTSequence<T> {
         BTSequence {
             decorators: Vec::<BoxedDecorator<T>>::new(),
             nodes,
@@ -16,8 +16,8 @@ impl<'a, T> BTSequence<'a, T> {
     }
 }
 
-impl<'a, T> BTNode<'a, T> for BTSequence<'a, T> {
-    fn reset(&'a mut self) {
+impl<T> BTNode<T> for BTSequence<T> {
+    fn reset(&mut self) {
         self.index = 0;
     }
 
@@ -25,7 +25,7 @@ impl<'a, T> BTNode<'a, T> for BTSequence<'a, T> {
         self.decorators.iter()
     }
 
-    fn internal_tick(&'a mut self, blackboard: &'a mut Box<T>) -> BTResult {
+    fn internal_tick(&mut self, blackboard: &mut Box<T>) -> BTResult {
         let len = self.nodes.len();
 
         if self.index < len {

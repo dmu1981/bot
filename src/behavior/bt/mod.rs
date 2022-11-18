@@ -11,16 +11,19 @@ pub enum BTDecoratorResult {
     Failure,
 }
 
-type BoxedNode<'a, T> = Box<dyn BTNode<'a, T>>;
+type BoxedNode<T> = Box<dyn BTNode<T>>;
 type BoxedDecorator<T> = Box<dyn BTDecorator<T>>;
 
-pub struct BehaviorTree<'a, T> {
+pub struct BehaviorTree<T> {
     blackboard: Box<T>,
-    root: BoxedNode<'a, T>,
+    root: BoxedNode<T>,
 }
 
-impl<'a, T> BehaviorTree<'a, T> {
-    fn new(root: BoxedNode<'a, T>, bb: Box<T>) -> BehaviorTree<'a, T> {
+unsafe impl<T> Send for BehaviorTree<T> where T: Send {}
+unsafe impl<T> Sync for BehaviorTree<T> where T: Sync {}
+
+impl<'a, T> BehaviorTree<T> {
+    pub fn new(root: BoxedNode<T>, bb: Box<T>) -> BehaviorTree<T> {
         BehaviorTree {
             blackboard: bb,
             root,
@@ -36,10 +39,10 @@ impl<'a, T> BehaviorTree<'a, T> {
     }
 }
 
-pub trait BTNode<'a, T> {
-    fn reset(&'a mut self);
+pub trait BTNode<T> {
+    fn reset(&mut self);
 
-    fn tick(&'a mut self, blackboard: &'a mut Box<T>) -> BTResult {
+    fn tick(&mut self, blackboard: &mut Box<T>) -> BTResult {
         if let BTDecoratorResult::Failure = self.check_decorators(blackboard) {
             return BTResult::Failure;
         };
@@ -47,7 +50,7 @@ pub trait BTNode<'a, T> {
         self.internal_tick(blackboard)
     }
 
-    fn internal_tick(&'a mut self, blackboard: &'a mut Box<T>) -> BTResult;
+    fn internal_tick(&mut self, blackboard: &mut Box<T>) -> BTResult;
 
     fn get_decorators(&self) -> Iter<Box<dyn BTDecorator<T>>>;
 
@@ -68,3 +71,5 @@ pub trait BTDecorator<T> {
 
 pub mod action;
 pub mod sequence;
+
+pub use action::*;
