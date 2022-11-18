@@ -2,6 +2,7 @@
 mod behavior;
 mod config;
 mod kicker;
+mod manager;
 mod math;
 mod motioncontroll;
 mod node;
@@ -49,6 +50,7 @@ async fn main() {
         ctrlc_tx.clone(),
     );
     let kicker = kicker::create(&config, ctrlc_tx.clone());
+    let manager = manager::create(&config, ctrlc_tx.clone());
 
     // Handle CTRL-C
     custom_ctrlc_handler(ctrlc_tx);
@@ -60,6 +62,7 @@ async fn main() {
         Box::new(perception),
         Box::new(behavior),
         Box::new(kicker),
+        Box::new(manager),
     ])
     .await;
 }
