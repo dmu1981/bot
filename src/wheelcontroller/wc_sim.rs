@@ -38,7 +38,6 @@ impl From<reqwest::Error> for ThreadError {
         }
     }
 }
-use std::time::Duration;
 
 fn init_node(spawned: bool, mut state: State<WheelControllerState>) -> DynFut<NodeResult> {
     Box::pin(async move {
