@@ -22,13 +22,13 @@ struct WheelControllerState {
 pub struct WheelControllerNode {
     pub wheelspeed_tx: Sender<f32>,
     pub extrinsics_rx: Receiver<WheelExtrinsics>,
-
     drop_rx: Receiver<()>,
     state: Arc<Mutex<WheelControllerState>>,
 }
 
 pub struct MyNode {
     pub controllers: Vec<WheelControllerNode>,
+    bot_spawned_rx: Receiver<bool>,
 }
 
 impl From<reqwest::Error> for ThreadError {
@@ -38,15 +38,24 @@ impl From<reqwest::Error> for ThreadError {
         }
     }
 }
+use std::time::Duration;
 
-fn init_node(mut state: State<WheelControllerState>) -> DynFut<NodeResult> {
+fn init_node(spawned: bool, mut state: State<WheelControllerState>) -> DynFut<NodeResult> {
     Box::pin(async move {
+        if !spawned {
+            return Ok(ThreadNext::Next);
+        }
+
+        println!("Requesting extrinsics");
+        //tokio::time::sleep(Duration::from_millis(2500)).await;
+
         let result = reqwest::get(&state.url).await;
 
         match result {
             Ok(response) => {
-                state.extrinsics =
-                    serde_json::from_str(response.text().await.unwrap().as_str()).unwrap()
+                let t = response.text().await.unwrap();
+                println!("{}", t);
+                state.extrinsics = serde_json::from_str(t.as_str()).unwrap()
             }
             Err(err) => {
                 state.drop_tx.send(()).unwrap();
@@ -124,9 +133,10 @@ fn create(
     }
 }
 
-pub fn create_all(config: &Config, drop_tx: Sender<()>) -> MyNode {
+pub fn create_all(config: &Config, bot_spawned_rx: Receiver<bool>, drop_tx: Sender<()>) -> MyNode {
     let mut controller = MyNode {
         controllers: Vec::<WheelControllerNode>::new(),
+        bot_spawned_rx,
     };
 
     for wheel in config.wheels.iter() {
@@ -146,7 +156,7 @@ impl Executor for MyNode {
     async fn init(&self) -> Handles {
         let mut handles = Handles::new();
         for wc in &self.controllers {
-            handles.push(wc.once(init_node));
+            handles.push(wc.subscribe(self.bot_spawned_rx.resubscribe(), init_node));
         }
         handles
     }

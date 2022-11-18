@@ -40,7 +40,12 @@ async fn main() {
     // Create our nodes
     println!("Creating nodes....");
 
-    let wheelcontrollers = wheelcontroller::create_all(&config, ctrlc_tx.clone());
+    let manager = manager::create(&config, ctrlc_tx.clone());
+    let wheelcontrollers = wheelcontroller::create_all(
+        &config,
+        manager.bot_spawned_rx.resubscribe(),
+        ctrlc_tx.clone(),
+    );
     let motioncontroller =
         motioncontroll::create(&config, &wheelcontrollers.controllers, ctrlc_tx.subscribe());
     let perception = perception::create(&config, ctrlc_tx.clone());
@@ -50,7 +55,6 @@ async fn main() {
         ctrlc_tx.clone(),
     );
     let kicker = kicker::create(&config, ctrlc_tx.clone());
-    let manager = manager::create(&config, ctrlc_tx.clone());
 
     // Handle CTRL-C
     custom_ctrlc_handler(ctrlc_tx);
