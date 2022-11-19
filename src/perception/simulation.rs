@@ -79,8 +79,6 @@ fn query_simulation(mut state: State<PerceptionState>) -> DynFut<NodeResult> {
             .await?
             .to_option();
 
-        println!("Ball position: {:?}", state.last_ball_position);
-
         state
             .perception_tx
             .send(PerceptionMessage {

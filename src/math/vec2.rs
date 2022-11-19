@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, Mul, SubAssign};
+use std::ops::{Add, Mul, MulAssign, Neg, Sub, SubAssign};
 
 #[derive(Debug, Copy, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Vec2 {
@@ -44,7 +44,29 @@ impl Add<Vec2> for Vec2 {
     fn add(self, rhs: Vec2) -> Vec2 {
         Vec2 {
             x: self.x + rhs.x,
-            y: self.y * rhs.y,
+            y: self.y + rhs.y,
+        }
+    }
+}
+
+impl Neg for Vec2 {
+    type Output = Vec2;
+
+    fn neg(self) -> Vec2 {
+        Vec2 {
+            x: -self.x,
+            y: -self.y,
+        }
+    }
+}
+
+impl Sub<Vec2> for Vec2 {
+    type Output = Vec2;
+
+    fn sub(self, rhs: Vec2) -> Vec2 {
+        Vec2 {
+            x: self.x - rhs.x,
+            y: self.y - rhs.y,
         }
     }
 }
@@ -53,5 +75,12 @@ impl SubAssign<Vec2> for Vec2 {
     fn sub_assign(&mut self, rhs: Vec2) {
         self.x -= rhs.x;
         self.y -= rhs.y;
+    }
+}
+
+impl MulAssign<f32> for Vec2 {
+    fn mul_assign(&mut self, rhs: f32) {
+        self.x *= rhs;
+        self.y *= rhs;
     }
 }

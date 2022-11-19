@@ -11,8 +11,8 @@ pub enum BTDecoratorResult {
     Failure,
 }
 
-type BoxedNode<T> = Box<dyn BTNode<T>>;
-type BoxedDecorator<T> = Box<dyn BTDecorator<T>>;
+pub type BoxedNode<T> = Box<dyn BTNode<T>>;
+pub type BoxedDecorator<T> = Box<dyn BTDecorator<T>>;
 
 pub struct BehaviorTree<T> {
     blackboard: Box<T>,
@@ -30,17 +30,21 @@ impl<'a, T> BehaviorTree<T> {
         }
     }
 
+    pub fn get_blackboard(&mut self) -> &mut T {
+        self.blackboard.as_mut()
+    }
+
     fn reset(&'a mut self) {
         self.root.reset();
     }
 
-    fn tick(&'a mut self) -> BTResult {
+    pub fn tick(&'a mut self) -> BTResult {
         self.root.tick(&mut self.blackboard)
     }
 }
 
 pub trait BTNode<T> {
-    fn reset(&mut self);
+    fn reset(&mut self) {}
 
     fn tick(&mut self, blackboard: &mut Box<T>) -> BTResult {
         if let BTDecoratorResult::Failure = self.check_decorators(blackboard) {

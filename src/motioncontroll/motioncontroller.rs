@@ -72,6 +72,8 @@ fn move_command(
                 }
             }
             MoveCommand::MoveAndAlign(position, orientation) => {
+                let speed_factor = clamp(position.magnitude() / 4.5, 0.0, 1.0);
+
                 let mut pos_norm = position.normalize();
                 let ori_norm = orientation.normalize();
 
@@ -118,7 +120,7 @@ fn move_command(
                 for wheel in &mut state.wheels {
                     let movement: f32 = clamp(wheel.wheel.forward.dot(&pos_norm), -1.0, 1.0);
 
-                    let wheel_speed = movement + rotate;
+                    let wheel_speed = movement * speed_factor + rotate;
 
                     wheel.speed = wheel_speed;
 

@@ -1,4 +1,5 @@
 use crate::behavior::bt::*;
+use crate::behavior::move_into_shoot_position::*;
 use crate::math::Vec2;
 use crate::motioncontroll::MoveCommand;
 use crate::node::*;
@@ -8,9 +9,10 @@ use std::sync::Arc;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 
-struct MyBlackboard {
-    ball: Vec2,
-    target_goal: Vec2,
+pub struct MyBlackboard {
+    pub ball: Vec2,
+    pub target_goal: Vec2,
+    pub movecommand_tx: Sender<MoveCommand>,
 }
 
 struct BehaviorState {
@@ -24,26 +26,36 @@ pub struct BehaviorNode {
     perception_rx: Receiver<PerceptionMessage>,
 }
 
-fn on_perception(perception: PerceptionMessage, state: State<BehaviorState>) -> DynFut<NodeResult> {
+fn on_perception(
+    perception: PerceptionMessage,
+    mut state: State<BehaviorState>,
+) -> DynFut<NodeResult> {
     Box::pin(async move {
         if perception.ball.position.is_none() || perception.target_goal.position.is_none() {
             panic!("Cannot handle missing measurements yet.");
         }
 
-        let ball = perception.ball.position.unwrap();
-        let goal = perception.target_goal.position.unwrap();
+        // Copy measurements into the behavior tree blackboard
+        state.tree.get_blackboard().ball = perception.ball.position.unwrap();
+        state.tree.get_blackboard().target_goal = perception.target_goal.position.unwrap();
 
-        state
-            .movecommand_tx
-            .send(MoveCommand::MoveAndAlign(ball, goal))
-            .unwrap();
+        state.tree.tick();
+
+        /*state
+        .movecommand_tx
+        .send(MoveCommand::MoveAndAlign(ball, goal))
+        .unwrap();*/
 
         Ok(ThreadNext::Next)
     })
 }
 
-fn cb(_bb: &mut Box<MyBlackboard>) -> BTResult {
-    BTResult::Pending
+fn on_interval(mut state: State<BehaviorState>) -> DynFut<NodeResult> {
+    Box::pin(async move {
+        state.tree.tick();
+
+        Ok(ThreadNext::Next)
+    })
 }
 
 pub fn create(
@@ -52,10 +64,11 @@ pub fn create(
     drop_tx: Sender<()>,
 ) -> BehaviorNode {
     let bb = MyBlackboard {
+        movecommand_tx: movecommand_tx.clone(),
         ball: Vec2 { x: 0.0, y: 0.0 },
         target_goal: Vec2 { x: 0.0, y: 0.0 },
     };
-    let root = BTAction::<MyBlackboard>::new(cb);
+    let root = BTMoveIntoShootPosition::new();
 
     let tree = BehaviorTree::new(Box::new(root), Box::new(bb));
     BehaviorNode {
@@ -85,7 +98,10 @@ impl Executor for BehaviorNode {
     }
 
     async fn run(&self) -> Handles {
-        vec![self.subscribe(self.perception_rx.resubscribe(), on_perception)]
+        vec![
+            self.subscribe(self.perception_rx.resubscribe(), on_perception),
+            //self.interval(Duration::from_millis(60), on_interval)
+        ]
     }
 
     async fn stop(&self) -> Handles {
