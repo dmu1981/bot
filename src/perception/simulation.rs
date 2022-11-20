@@ -1,4 +1,5 @@
 use crate::config::*;
+use crate::intercom::{IntercomMessage, IntercomPosition};
 use crate::math::Vec2;
 use crate::node::*;
 use crate::perception::{Measurement, PerceptionMessage};
@@ -21,6 +22,7 @@ struct PerceptionState {
     last_targetgoal_position: Option<Vec2>,
     last_boundary_position: Option<Vec2>,
     perception_tx: Sender<PerceptionMessage>,
+    intercom_send_tx: Sender<IntercomMessage>,
 }
 
 pub struct PerceptionNode {
@@ -97,17 +99,31 @@ fn query_simulation(mut state: State<PerceptionState>) -> DynFut<NodeResult> {
             })
             .unwrap();
 
+        state
+            .intercom_send_tx
+            .send(IntercomMessage::Position(IntercomPosition {
+                ball: state.last_ball_position.unwrap(),
+                own_goal: state.last_owngoal_position.unwrap(),
+                target_goal: state.last_targetgoal_position.unwrap(),
+            }))
+            .unwrap();
+
         Ok(ThreadNext::Next)
     })
 }
 
-pub fn create(config: &Config, drop_tx: Sender<()>) -> PerceptionNode {
+pub fn create(
+    config: &Config,
+    drop_tx: Sender<()>,
+    intercom_send_tx: Sender<IntercomMessage>,
+) -> PerceptionNode {
     let (tx, rx) = tokio::sync::broadcast::channel::<PerceptionMessage>(4);
 
     PerceptionNode {
         drop_rx: drop_tx.subscribe(),
         perception_rx: rx,
         state: Arc::new(Mutex::new(PerceptionState {
+            intercom_send_tx,
             perception_tx: tx,
             ball_url: config.simulation.url.to_owned() + "/ball",
             owngoal_url: config.simulation.url.to_owned() + "/owngoal",

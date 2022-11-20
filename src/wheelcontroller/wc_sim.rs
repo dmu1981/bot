@@ -45,7 +45,7 @@ fn init_node(spawned: bool, mut state: State<WheelControllerState>) -> DynFut<No
             return Ok(ThreadNext::Next);
         }
 
-        println!("Requesting extrinsics");
+        //println!("Requesting extrinsics");
         //tokio::time::sleep(Duration::from_millis(2500)).await;
 
         let result = reqwest::get(&state.url).await;

@@ -48,10 +48,10 @@ fn init_node(mut state: State<MotionControllerState>) -> DynFut<NodeResult> {
               value = wheel.extrinsics_rx.recv() => {
                 wheel.wheel = value.unwrap();
 
-                println!(
+                /*println!(
                   "MotionController received extrinsics for wheel: {:?}",
                   wheel.wheel
-                );
+                );*/
               }
             }
         }

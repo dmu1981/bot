@@ -24,19 +24,32 @@ pub struct Simulation {
     pub port: u32,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct Intercom {
+    pub master: bool,
+    pub port: u32,
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub wheels: Vec<Wheel>,
     pub simulation: Simulation,
+    pub intercom: Intercom,
 }
 
 #[derive(Parser, Debug)]
 struct Args {
-    #[arg(short, long)]
+    #[arg(long)]
     config: Option<String>,
 
-    #[arg(short, long)]
-    port: Option<u32>,
+    #[arg(long)]
+    simport: Option<u32>,
+
+    #[arg(long)]
+    master: Option<bool>,
+
+    #[arg(long)]
+    comport: Option<u32>,
 }
 
 pub fn read_from_disk() -> Result<Config, Box<dyn Error>> {
@@ -46,7 +59,17 @@ pub fn read_from_disk() -> Result<Config, Box<dyn Error>> {
     let string = fs::read_to_string(config_path)?;
     let mut config: Config = serde_yaml::from_str(&string)?;
 
-    let port = args.port.unwrap_or(config.simulation.port);
+    // Overwrite master mode if set via command line
+    if let Some(master) = args.master {
+        config.intercom.master = master;
+    }
+
+    // Overwrite master mode if set via command line
+    if let Some(comport) = args.comport {
+        config.intercom.port = comport;
+    }
+
+    let port = args.simport.unwrap_or(config.simulation.port);
     let port_str = ":".to_owned() + &port.to_string();
     config.simulation.url += &port_str;
     println!("Simulation running at {}", config.simulation.url);

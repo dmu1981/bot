@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 mod behavior;
 mod config;
+mod intercom;
 mod kicker;
 mod manager;
 mod math;
@@ -41,6 +42,8 @@ async fn main() {
     println!("Creating nodes....");
 
     let manager = manager::create(&config, ctrlc_tx.clone());
+    let intercom = intercom::create(&config, ctrlc_tx.clone());
+
     let wheelcontrollers = wheelcontroller::create_all(
         &config,
         manager.bot_spawned_rx.resubscribe(),
@@ -48,7 +51,8 @@ async fn main() {
     );
     let motioncontroller =
         motioncontroll::create(&config, &wheelcontrollers.controllers, ctrlc_tx.subscribe());
-    let perception = perception::create(&config, ctrlc_tx.clone());
+    let perception =
+        perception::create(&config, ctrlc_tx.clone(), intercom.send_message_tx.clone());
     let kicker = kicker::create(&config, ctrlc_tx.clone());
     let behavior = behavior::create(
         perception.perception_rx.resubscribe(),
@@ -68,6 +72,7 @@ async fn main() {
         Box::new(behavior),
         Box::new(kicker),
         Box::new(manager),
+        Box::new(intercom),
     ])
     .await;
 }

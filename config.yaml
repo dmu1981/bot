@@ -34,3 +34,7 @@ wheels:
 simulation:
   url: "http://127.0.0.1"
   port: 4444
+intercom:
+  master: true
+  port: 8888
+  
