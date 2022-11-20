@@ -10,11 +10,11 @@ pub struct BTMoveIntoShootPosition {
 }
 
 impl BTMoveIntoShootPosition {
-    pub fn new() -> BTMoveIntoShootPosition {
-        BTMoveIntoShootPosition {
+    pub fn new() -> Box<BTMoveIntoShootPosition> {
+        Box::new(BTMoveIntoShootPosition {
             is_between_ball_and_goal: true,
             decorators: Vec::<BoxedDecorator<MyBlackboard>>::new(),
-        }
+        })
     }
 }
 
@@ -35,11 +35,13 @@ impl BTNode<MyBlackboard> for BTMoveIntoShootPosition {
         let dot = ball_norm.dot(&goal_norm);
 
         // Small hysteresis
-        if self.is_between_ball_and_goal && dot > 0.05 {
+        if self.is_between_ball_and_goal && dot > 0.3 {
             self.is_between_ball_and_goal = false;
-        } else if !self.is_between_ball_and_goal && dot < -0.05 {
+        } else if !self.is_between_ball_and_goal && dot < -0.3 {
             self.is_between_ball_and_goal = true;
         }
+
+        //println!("Between ball and goal: {}", self.is_between_ball_and_goal);
 
         let target_position: Vec2 = if self.is_between_ball_and_goal {
             let mut normal = Vec2 {
@@ -51,7 +53,7 @@ impl BTNode<MyBlackboard> for BTMoveIntoShootPosition {
                 normal *= -1.0;
             }
 
-            blackboard.ball + normal * SHOT_RANGE
+            blackboard.ball + (goal_to_ball + normal) * SHOT_RANGE
         } else {
             blackboard.ball + goal_to_ball * SHOT_RANGE
         };

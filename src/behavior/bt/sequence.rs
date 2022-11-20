@@ -1,24 +1,27 @@
 use crate::behavior::bt::*;
 
-struct BTSequence<T> {
+pub struct BTSequence<T> {
     nodes: Vec<BoxedNode<T>>,
     index: usize,
     decorators: Vec<BoxedDecorator<T>>,
 }
 
 impl<T> BTSequence<T> {
-    fn new(nodes: Vec<BoxedNode<T>>) -> BTSequence<T> {
-        BTSequence {
+    pub fn new(nodes: Vec<BoxedNode<T>>) -> Box<BTSequence<T>> {
+        Box::new(BTSequence {
             decorators: Vec::<BoxedDecorator<T>>::new(),
             nodes,
             index: 0,
-        }
+        })
     }
 }
 
 impl<T> BTNode<T> for BTSequence<T> {
     fn reset(&mut self) {
         self.index = 0;
+        for node in &mut self.nodes {
+            node.reset();
+        }
     }
 
     fn get_decorators(&self) -> Iter<Box<dyn BTDecorator<T>>> {

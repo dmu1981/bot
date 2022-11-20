@@ -1,5 +1,6 @@
 use crate::behavior::bt::*;
 use crate::behavior::move_into_shoot_position::*;
+use crate::behavior::shoot_into_goal::*;
 use crate::math::Vec2;
 use crate::motioncontroll::MoveCommand;
 use crate::node::*;
@@ -13,10 +14,10 @@ pub struct MyBlackboard {
     pub ball: Vec2,
     pub target_goal: Vec2,
     pub movecommand_tx: Sender<MoveCommand>,
+    pub kicker_tx: Sender<bool>,
 }
 
 struct BehaviorState {
-    movecommand_tx: Sender<MoveCommand>,
     tree: BehaviorTree<MyBlackboard>,
 }
 
@@ -61,23 +62,27 @@ fn on_interval(mut state: State<BehaviorState>) -> DynFut<NodeResult> {
 pub fn create(
     perception_rx: Receiver<PerceptionMessage>,
     movecommand_tx: Sender<MoveCommand>,
+    kicker_tx: Sender<bool>,
     drop_tx: Sender<()>,
 ) -> BehaviorNode {
     let bb = MyBlackboard {
-        movecommand_tx: movecommand_tx.clone(),
+        movecommand_tx,
+        kicker_tx,
         ball: Vec2 { x: 0.0, y: 0.0 },
         target_goal: Vec2 { x: 0.0, y: 0.0 },
     };
-    let root = BTMoveIntoShootPosition::new();
 
-    let tree = BehaviorTree::new(Box::new(root), Box::new(bb));
+    let root = BTRepeat::new(
+        None,
+        BTSequence::new(vec![BTMoveIntoShootPosition::new(), BTShootIntoGoal::new()]),
+    );
+
+    let tree = BehaviorTree::new(root, Box::new(bb));
+
     BehaviorNode {
         drop_rx: drop_tx.subscribe(),
         perception_rx,
-        state: Arc::new(Mutex::new(BehaviorState {
-            movecommand_tx,
-            tree,
-        })),
+        state: Arc::new(Mutex::new(BehaviorState { tree })),
     }
 }
 

@@ -21,7 +21,14 @@ pub struct KickerNode {
 fn on_kick(kick: bool, state: State<KickerState>) -> DynFut<NodeResult> {
     Box::pin(async move {
         if kick {
-            state.client.post(&state.url).send().await.unwrap();
+            println!("Kicking... {}", state.url);
+            state
+                .client
+                .post(&state.url)
+                .body("empty body".to_owned())
+                .send()
+                .await
+                .unwrap();
         }
 
         Ok(ThreadNext::Next)

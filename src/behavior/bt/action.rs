@@ -8,11 +8,11 @@ pub struct BTAction<T> {
 }
 
 impl<T> BTAction<T> {
-    pub fn new(callback: ActionCallback<T>) -> BTAction<T> {
-        BTAction {
+    pub fn new(callback: ActionCallback<T>) -> Box<BTAction<T>> {
+        Box::new(BTAction {
             decorators: Vec::<BoxedDecorator<T>>::new(),
             callback,
-        }
+        })
     }
 }
 

@@ -49,12 +49,13 @@ async fn main() {
     let motioncontroller =
         motioncontroll::create(&config, &wheelcontrollers.controllers, ctrlc_tx.subscribe());
     let perception = perception::create(&config, ctrlc_tx.clone());
+    let kicker = kicker::create(&config, ctrlc_tx.clone());
     let behavior = behavior::create(
         perception.perception_rx.resubscribe(),
         motioncontroller.movecommand_tx.clone(),
+        kicker.kick_tx.clone(),
         ctrlc_tx.clone(),
     );
-    let kicker = kicker::create(&config, ctrlc_tx.clone());
 
     // Handle CTRL-C
     custom_ctrlc_handler(ctrlc_tx);

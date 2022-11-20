@@ -74,6 +74,9 @@ pub trait BTDecorator<T> {
 }
 
 pub mod action;
+pub mod repeat;
 pub mod sequence;
 
 pub use action::*;
+pub use repeat::*;
+pub use sequence::*;
