@@ -14,14 +14,14 @@ use tokio::sync::Mutex;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum IntercomMessage {
-  Position(IntercomPosition),
-  ModeTransition(IntercomMode),
+    Position(IntercomPosition),
+    ModeTransition(IntercomMode),
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum BehaviorMode {
-  Offense,
-  Defense
+    Offense,
+    Defense,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -33,7 +33,7 @@ pub struct IntercomPosition {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct IntercomMode {
-    pub mode: BehaviorMode
+    pub mode: BehaviorMode,
 }
 
 struct IntercomState {
@@ -135,18 +135,16 @@ async fn start_slave(mut state: State<'_, IntercomState>) {
     loop {
         let socket = TcpSocket::new_v4().expect("Intercom cannot create TcpSocket");
         match socket.connect(addr).await {
-          Ok(stream) => {
-            if let ComResult::Drop = handle_com(stream, &mut state).await {
-              break;
+            Ok(stream) => {
+                if let ComResult::Drop = handle_com(stream, &mut state).await {
+                    break;
+                }
             }
-          },
-          Err(err) => {
-            println!("Slave cannot connect to master, error is {}", err.to_string());
-            tokio::time::sleep(Duration::from_millis(1500)).await;
-          }
+            Err(err) => {
+                println!("Slave cannot connect to master, error is {}", err);
+                tokio::time::sleep(Duration::from_millis(1500)).await;
+            }
         }
-
-        
     }
 }
 
@@ -171,12 +169,12 @@ async fn start_master(mut state: State<'_, IntercomState>) {
 
 fn start(state: State<IntercomState>) -> DynFut<NodeResult> {
     Box::pin(async move {
-        if state.master {
+        /*if state.master {
             start_master(state).await;
         } else {
             start_slave(state).await;
         }
-
+*/
         Ok(ThreadNext::Terminate)
     })
 }

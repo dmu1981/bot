@@ -1,6 +1,7 @@
 use crate::behavior::bt::*;
 use crate::behavior::move_into_shoot_position::*;
 use crate::behavior::shoot_into_goal::*;
+use crate::behavior::botnet_behavior::*;
 use crate::math::Vec2;
 use crate::motioncontroll::MoveCommand;
 use crate::node::*;
@@ -15,6 +16,8 @@ pub struct MyBlackboard {
     pub target_goal: Vec2,
     pub movecommand_tx: Sender<MoveCommand>,
     pub kicker_tx: Sender<bool>,
+    pub wheelspeed_tx_vec: Vec<Sender<f32>>,
+    pub reset_sim_tx: Sender<bool>,
 }
 
 struct BehaviorState {
@@ -63,6 +66,8 @@ pub fn create(
     perception_rx: Receiver<PerceptionMessage>,
     movecommand_tx: Sender<MoveCommand>,
     kicker_tx: Sender<bool>,
+    wheelspeed_tx_vec: Vec<Sender<f32>>,
+    reset_sim_tx: Sender<bool>,
     drop_tx: Sender<()>,
 ) -> BehaviorNode {
     let bb = MyBlackboard {
@@ -70,12 +75,15 @@ pub fn create(
         kicker_tx,
         ball: Vec2 { x: 0.0, y: 0.0 },
         target_goal: Vec2 { x: 0.0, y: 0.0 },
+        wheelspeed_tx_vec,
+        reset_sim_tx
     };
 
-    let root = BTRepeat::new(
+    /*let root = BTRepeat::new(
         None,
         BTSequence::new(vec![BTMoveIntoShootPosition::new(), BTShootIntoGoal::new()]),
-    );
+    );*/
+    let root = BTBotNet::new();
 
     let tree = BehaviorTree::new(root, Box::new(bb));
 

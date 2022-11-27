@@ -14,12 +14,16 @@ struct ManagerState {
     reset_url: String,
     client: reqwest::Client,
     bot_spawned_tx: Sender<bool>,
+    
 }
 
 pub struct ManagerNode {
     drop_rx: Receiver<()>,
     state: Arc<Mutex<ManagerState>>,
     pub bot_spawned_rx: Receiver<bool>,
+
+    reset_sim_rx: Receiver<bool>,
+    pub reset_sim_tx: Sender<bool>,
 }
 
 #[derive(Deserialize)]
@@ -28,7 +32,7 @@ struct APIVersion {
 }
 
 async fn send_reset_signal(url: &String, client: &reqwest::Client) {
-    client.post(url).send().await.unwrap();
+    client.post(url).body("1.0".as_bytes()).send().await.unwrap();
 }
 
 fn reset_sim(reset: bool, state: State<ManagerState>) -> DynFut<NodeResult> {
@@ -65,15 +69,18 @@ fn api_check(state: State<ManagerState>) -> DynFut<NodeResult> {
 
 pub fn create(config: &Config, drop_tx: Sender<()>) -> ManagerNode {
     let (tx, rx) = tokio::sync::broadcast::channel::<bool>(1);
+    let (tx2, rx2) = tokio::sync::broadcast::channel::<bool>(1);
 
     ManagerNode {
         drop_rx: drop_tx.subscribe(),
         bot_spawned_rx: rx,
+        reset_sim_tx: tx2,
+        reset_sim_rx: rx2,
         state: Arc::new(Mutex::new(ManagerState {
             client: reqwest::Client::new(),
             bot_spawned_tx: tx,
             api_url: config.simulation.url.to_owned() + "/api",
-            reset_url: config.simulation.url.to_owned() + "/reset",
+            reset_url: config.simulation.url.to_owned() + "/reset",            
         })),
     }
 }
@@ -95,7 +102,7 @@ impl Executor for ManagerNode {
     }
 
     async fn run(&self) -> Handles {
-        vec![]
+        vec![self.subscribe(self.reset_sim_rx.resubscribe(), reset_sim)]
     }
 
     async fn stop(&self) -> Handles {

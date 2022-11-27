@@ -1,4 +1,5 @@
 use std::slice::Iter;
+use async_trait::async_trait;
 
 pub enum BTResult {
     Success,
@@ -43,6 +44,7 @@ impl<'a, T> BehaviorTree<T> {
     }
 }
 
+#[async_trait]
 pub trait BTNode<T> {
     fn reset(&mut self) {}
 
