@@ -124,6 +124,7 @@ impl BTNode<MyBlackboard> for BTBotNet {
             self.goal_score = self.goal_distance_start;
             self.dot_score = -1.0;
             self.start_time = std::time::Instant::now();
+            self.score_counter = 0.0;
             //println!("Ball Distance Start is {}", self.ball_distance_start);
             //println!("Goal Distance Start is {}", self.goal_distance_start);
           }
