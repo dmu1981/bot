@@ -39,8 +39,8 @@ pub struct BTBotNet {
 }
 
 impl BTBotNet {
-    pub fn new() -> Box<BTBotNet> {
-        let genepool = GenePool::<MyPayload>::new(150, FitnessSortingOrder::LessIsBetter).unwrap();
+    pub fn new(url: String) -> Box<BTBotNet> {
+        let genepool = GenePool::<MyPayload>::new(150, FitnessSortingOrder::LessIsBetter, url).unwrap();
 
         let bot = Box::new(BTBotNet {
             toack: None,

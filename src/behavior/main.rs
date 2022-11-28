@@ -1,3 +1,4 @@
+use crate::config::Config;
 use crate::behavior::bt::*;
 use crate::behavior::move_into_shoot_position::*;
 use crate::behavior::shoot_into_goal::*;
@@ -63,6 +64,7 @@ fn on_interval(mut state: State<BehaviorState>) -> DynFut<NodeResult> {
 }
 
 pub fn create(
+    config: &Config,
     perception_rx: Receiver<PerceptionMessage>,
     movecommand_tx: Sender<MoveCommand>,
     kicker_tx: Sender<bool>,
@@ -83,7 +85,7 @@ pub fn create(
         None,
         BTSequence::new(vec![BTMoveIntoShootPosition::new(), BTShootIntoGoal::new()]),
     );*/
-    let root = BTBotNet::new();
+    let root = BTBotNet::new(config.genetics.pool.clone());
 
     let tree = BehaviorTree::new(root, Box::new(bb));
 

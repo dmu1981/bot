@@ -30,11 +30,17 @@ pub struct Intercom {
     pub port: u32,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+pub struct Genetics {
+    pub pool: String,
+}
+
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct Config {
     pub wheels: Vec<Wheel>,
     pub simulation: Simulation,
     pub intercom: Intercom,
+    pub genetics: Genetics,
 }
 
 #[derive(Parser, Debug)]
@@ -50,6 +56,9 @@ struct Args {
 
     #[arg(long)]
     comport: Option<u32>,
+
+    #[arg(long)]
+    genepool: Option<String>,
 }
 
 pub fn read_from_disk() -> Result<Config, Box<dyn Error>> {
@@ -60,6 +69,10 @@ pub fn read_from_disk() -> Result<Config, Box<dyn Error>> {
     let mut config: Config = serde_yaml::from_str(&string)?;
 
     // Overwrite master mode if set via command line
+    if let Some(genepool) = args.genepool {
+        config.genetics.pool = genepool;
+    }
+
     if let Some(master) = args.master {
         config.intercom.master = master;
     }

@@ -32,6 +32,7 @@ fn custom_ctrlc_handler(ctrlc_tx: broadcast::Sender<()>) {
 
 #[tokio::main]
 async fn main() {
+    tokio::time::sleep(std::time::Duration::from_millis(1500)).await;
     // Read configuration file
     let config = config::read_from_disk().unwrap();
 
@@ -63,6 +64,7 @@ async fn main() {
     ];
 
     let behavior = behavior::create(
+        &config,
         perception.perception_rx.resubscribe(),
         motioncontroller.movecommand_tx.clone(),
         kicker.kick_tx.clone(),

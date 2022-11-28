@@ -37,4 +37,6 @@ simulation:
 intercom:
   master: true
   port: 8888
+genetics:
+  pool: amqp://localhost:5672
   
