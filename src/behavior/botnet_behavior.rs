@@ -32,6 +32,7 @@ pub struct BTBotNet {
     score_so_far: f32,
     number_runs: u32,
     round_timer: f32,
+    score_counter: f32,
     run: u32,
     genepool: GenePool<MyPayload>,
     toack: Option<GenomeAck<MyPayload>>,
@@ -58,6 +59,7 @@ impl BTBotNet {
             round_timer: 4.0,
             run: 0,
             iteration: 0,
+            score_counter: 0.0,
             number_runs: 0,
             genepool,
             delay_ticker: 0,
@@ -78,17 +80,18 @@ impl BTBotNet {
       self.max_goal_distance = 0.0;
       self.delay_ticker = 4;
       self.round_timer = 3.0;
+      self.score_counter = 0.0;
 
       
       match self.genepool.poll_one() {
         Ok(gene) => {
-          self.number_runs = 1 + gene.message.generation / 7;
+          self.number_runs = 1 + gene.message.generation / 20;
           if self.number_runs > 6 {
             self.number_runs = 6;
           }
-          self.round_timer = 3.0 + (gene.message.generation as f32) / 20.0;
-          if self.round_timer > 5.0 {
-            self.round_timer = 5.0;
+          self.round_timer = 3.0 + (gene.message.generation as f32) / 40.0;
+          if self.round_timer > 6.0 {
+            self.round_timer = 6.0;
           }
           println!("Bot generation is {}, playing {} rounds, {}s each", gene.message.generation, self.number_runs, self.round_timer);
           self.botnet = Some(gene.message.payload.botnet.clone());
@@ -138,9 +141,9 @@ impl BTNode<MyBlackboard> for BTBotNet {
         if self.start_time.elapsed().as_secs_f32() > self.round_timer {
           //let score = /*self.ball_score + self.goal_score * 4.0 + */(self.max_goal_distance - 22.0)*80.0;
           let max_score = max((self.max_goal_distance / self.goal_distance_start).powf(2.0) - 1.0, 0.0);
-          let ball_score = max((self.ball_score / self.ball_distance_start - 0.2) / 0.8, 0.0);
-          let goal_score = (max(self.goal_score / self.goal_distance_start, 0.0)).powf(0.8);
-          let dot_score = (1.0 - self.dot_score) / 2.0;
+          let ball_score = max(((self.ball_score / self.score_counter) / self.ball_distance_start - 0.2) / 0.8, 0.0);
+          let goal_score = (max((self.goal_score / self.score_counter) / self.goal_distance_start, 0.0)).powf(0.65);
+          let dot_score = (1.0 - self.dot_score / self.score_counter) / 2.0;
 
           let score = max(max_score * 20.0 + goal_score * 140.0 + ball_score * 10.0 + dot_score * 50.0, 0.0);
 
@@ -172,12 +175,16 @@ impl BTNode<MyBlackboard> for BTBotNet {
 
         }
 
-
         let dot = blackboard.ball.normalize().dot(&blackboard.target_goal.normalize());
-        self.dot_score = max(self.dot_score, dot);
-
+        
+        /*self.dot_score = max(self.dot_score, dot);
         self.ball_score = min(self.ball_score, blackboard.ball.magnitude());
         self.goal_score = min(self.goal_score, (blackboard.ball - blackboard.target_goal).magnitude());
+        self.max_goal_distance = max(self.max_goal_distance, (blackboard.ball - blackboard.target_goal).magnitude());*/
+        self.dot_score += dot;
+        self.ball_score += blackboard.ball.magnitude();
+        self.goal_score += (blackboard.ball - blackboard.target_goal).magnitude();
+        self.score_counter += 1.0;
         self.max_goal_distance = max(self.max_goal_distance, (blackboard.ball - blackboard.target_goal).magnitude());
 
         let input = vec![
