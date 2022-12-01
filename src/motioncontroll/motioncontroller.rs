@@ -107,7 +107,7 @@ fn move_command(
                 }
 
                 // Calculate a basic momentum term to compensate for overshooting
-                rotate -= state.rotate_momentum;
+                //rotate -= state.rotate_momentum;
 
                 const MAGIC_ROTATION_CONSTANT: f32 = 5.0; // Magic constant describing how quickly momentum accumulates
                 let rotate_factor = clamp(elapsed_s * MAGIC_ROTATION_CONSTANT, 0.0, 1.0);
@@ -121,7 +121,8 @@ fn move_command(
                 for wheel in &mut state.wheels {
                     let movement: f32 = clamp(wheel.wheel.forward.dot(&pos_norm), -1.0, 1.0);
 
-                    let wheel_speed = movement * speed_factor + rotate;
+                    let wheel_speed = 0.8 * movement * speed_factor + rotate* 0.2;
+                    //println!("{}",wheel_speed);
 
                     wheel.speed = wheel_speed;
 
@@ -132,7 +133,8 @@ fn move_command(
 
                 for wheel in &state.wheels {
                     wheel.tx.send(wheel.speed / max_abs_speed).unwrap();
-                }
+             
+                  }
             }
         }
         Ok(ThreadNext::Next)

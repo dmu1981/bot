@@ -2,10 +2,12 @@ use crate::config::Config;
 use crate::node::*;
 use async_trait::async_trait;
 use serde::Deserialize;
+use std::net::{TcpListener, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
+use std::io::{Write, Read};
 
 const API_VERSION: u32 = 1;
 
@@ -43,6 +45,33 @@ fn reset_sim(reset: bool, state: State<ManagerState>) -> DynFut<NodeResult> {
 
         Ok(ThreadNext::Next)
     })
+}
+
+fn health_check(state: State<ManagerState>) -> DynFut<NodeResult> {
+  tokio::spawn(async move {
+    let listener = TcpListener::bind("127.0.0.1:3333").unwrap();
+
+    println!("Echo Listening on port 3333...\n");
+
+    loop {
+        let (mut stream, _) = listener.accept().unwrap();
+        let mut buffer = [0; 1024];        
+        stream.read(&mut buffer).unwrap();
+        let content = match std::str::from_utf8(&mut buffer) {
+          Ok(v) => v,
+          Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+      };
+
+      stream.write_all("HTTP/1.1 200 OK\n\n".as_bytes()).unwrap();
+      stream.write_all(content.as_bytes()).unwrap();
+
+      stream.shutdown(Shutdown::Both).unwrap();
+    }
+  });
+
+  Box::pin(async move {
+    Ok(ThreadNext::Terminate)
+  })
 }
 
 fn api_check(state: State<ManagerState>) -> DynFut<NodeResult> {
@@ -98,7 +127,7 @@ impl Node<ManagerState> for ManagerNode {
 #[async_trait]
 impl Executor for ManagerNode {
     async fn init(&self) -> Handles {
-        vec![self.once(api_check)]
+        vec![self.once(api_check), self.once(health_check)]
     }
 
     async fn run(&self) -> Handles {

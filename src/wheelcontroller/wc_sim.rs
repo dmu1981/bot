@@ -53,7 +53,7 @@ fn init_node(spawned: bool, mut state: State<WheelControllerState>) -> DynFut<No
         match result {
             Ok(response) => {
                 let t = response.text().await.unwrap();
-                println!("{}", t);
+                //println!("{}", t);
                 state.extrinsics = serde_json::from_str(t.as_str()).unwrap()
             }
             Err(err) => {

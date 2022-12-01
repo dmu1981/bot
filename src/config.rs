@@ -86,5 +86,6 @@ pub fn read_from_disk() -> Result<Config, Box<dyn Error>> {
     let port_str = ":".to_owned() + &port.to_string();
     config.simulation.url += &port_str;
     println!("Simulation running at {}", config.simulation.url);
+    println!("AMQP running at {}", config.genetics.pool);
     Ok(config)
 }
