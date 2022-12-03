@@ -146,7 +146,7 @@ pub fn create(
     wheelcontrollers: &[WheelControllerNode],
     drop_rx: Receiver<()>,
 ) -> MotionControllerNode {
-    let (tx, _) = tokio::sync::broadcast::channel::<MoveCommand>(4);
+    let (tx, _) = tokio::sync::broadcast::channel::<MoveCommand>(16);
 
     let mut wheels = Vec::<WheelInfo>::new();
 

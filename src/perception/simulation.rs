@@ -13,6 +13,7 @@ use tokio::sync::Mutex;
 struct PerceptionState {
     drop_tx: Sender<()>,
     ball_url: String,
+    get_goals_url: String,
     owngoal_url: String,
     targetgoal_url: String,
     boundary_url: String,
@@ -21,6 +22,7 @@ struct PerceptionState {
     last_owngoal_position: Option<Vec2>,
     last_targetgoal_position: Option<Vec2>,
     last_boundary_position: Option<Vec2>,
+    last_goals: u32,
     perception_tx: Sender<PerceptionMessage>,
     intercom_send_tx: Sender<IntercomMessage>,
 }
@@ -35,6 +37,11 @@ pub struct PerceptionNode {
 struct DetectorResponse {
     detected: bool,
     position: Vec2,
+}
+
+#[derive(Deserialize, Debug)]
+struct GoalResponse {
+    n_goals: u32,
 }
 
 impl DetectorResponse {
@@ -63,8 +70,26 @@ async fn get_url(
     }
 }
 
+async fn get_goals(
+  client: &reqwest::Client,
+  url: &String,
+  drop_tx: &Sender<()>,
+) -> std::result::Result<GoalResponse, ThreadError> {
+  let result = client.get(url).send().await;
+
+  match result {
+      Ok(response) => Ok(serde_json::from_str(response.text().await.unwrap().as_str()).unwrap()),
+      Err(err) => {
+          drop_tx.send(()).unwrap();
+          Err(ThreadError::from(err))
+      }
+  }
+}
+
 fn query_simulation(mut state: State<PerceptionState>) -> DynFut<NodeResult> {
     Box::pin(async move {
+        state.last_goals = get_goals(&state.client, &state.get_goals_url, &state.drop_tx).await?.n_goals;
+
         state.last_ball_position = get_url(&state.client, &state.ball_url, &state.drop_tx)
             .await?
             .to_option();
@@ -96,6 +121,7 @@ fn query_simulation(mut state: State<PerceptionState>) -> DynFut<NodeResult> {
                 boundary: Measurement {
                     position: state.last_boundary_position,
                 },
+                n_goals: state.last_goals,
             })
             .unwrap();
 
@@ -117,7 +143,7 @@ pub fn create(
     drop_tx: Sender<()>,
     intercom_send_tx: Sender<IntercomMessage>,
 ) -> PerceptionNode {
-    let (tx, rx) = tokio::sync::broadcast::channel::<PerceptionMessage>(4);
+    let (tx, rx) = tokio::sync::broadcast::channel::<PerceptionMessage>(16);
 
     PerceptionNode {
         drop_rx: drop_tx.subscribe(),
@@ -125,6 +151,7 @@ pub fn create(
         state: Arc::new(Mutex::new(PerceptionState {
             intercom_send_tx,
             perception_tx: tx,
+            get_goals_url: config.simulation.url.to_owned() + "/goals",
             ball_url: config.simulation.url.to_owned() + "/ball",
             owngoal_url: config.simulation.url.to_owned() + "/owngoal",
             targetgoal_url: config.simulation.url.to_owned() + "/targetgoal",
@@ -134,6 +161,7 @@ pub fn create(
             last_ball_position: Some(Vec2 { x: 0.0, y: 0.0 }),
             last_targetgoal_position: Some(Vec2 { x: 0.0, y: 0.0 }),
             last_owngoal_position: Some(Vec2 { x: 0.0, y: 0.0 }),
+            last_goals: 0,
             last_boundary_position: None,
         })),
     }

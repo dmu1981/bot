@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Mul, MulAssign, Neg, Sub, SubAssign};
 
+use super::lerp;
+
 #[derive(Debug, Copy, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Vec2 {
     pub x: f32,
@@ -10,6 +12,13 @@ pub struct Vec2 {
 impl Vec2 {
     pub fn dot(&self, other: &Vec2) -> f32 {
         self.x * other.x + self.y * other.y
+    }
+
+    pub fn lerp(&self, other: &Vec2, r: f32) -> Vec2 {
+        Vec2 {
+          x: lerp(self.x, other.x, r),
+          y: lerp(self.y, other.y, r)
+        }
     }
 
     pub fn sqr_magnitude(&self) -> f32 {

@@ -12,6 +12,7 @@ pub struct PerceptionMessage {
     pub own_goal: Measurement,
     pub target_goal: Measurement,
     pub boundary: Measurement,
+    pub n_goals: u32,
 }
 
 #[cfg(feature = "simulation")]

@@ -38,5 +38,5 @@ intercom:
   master: true
   port: 8888
 genetics:
-  pool: amqp://guest:guest@192.168.178.44:5672/
+  pool: amqp://mhulla:jenny267@genepool.dmuonline.net:5672/
   

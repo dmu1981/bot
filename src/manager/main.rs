@@ -9,7 +9,7 @@ use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 use std::io::{Write, Read};
 
-const API_VERSION: u32 = 1;
+const API_VERSION: u32 = 2;
 
 struct ManagerState {
     api_url: String,
@@ -49,6 +49,7 @@ fn reset_sim(reset: bool, state: State<ManagerState>) -> DynFut<NodeResult> {
 
 fn health_check(state: State<ManagerState>) -> DynFut<NodeResult> {
   tokio::spawn(async move {
+    return;
     let listener = TcpListener::bind("127.0.0.1:3333").unwrap();
 
     println!("Echo Listening on port 3333...\n");

@@ -13,6 +13,7 @@ use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 
 pub struct MyBlackboard {
+    pub n_goals: u32,
     pub ball: Vec2,
     pub target_goal: Vec2,
     pub movecommand_tx: Sender<MoveCommand>,
@@ -41,10 +42,13 @@ fn on_perception(
         }
 
         // Copy measurements into the behavior tree blackboard
+        state.tree.get_blackboard().n_goals = perception.n_goals;
         state.tree.get_blackboard().ball = perception.ball.position.unwrap();
         state.tree.get_blackboard().target_goal = perception.target_goal.position.unwrap();
 
+        //println!("Before Tick");
         state.tree.tick();
+        //println!("After Tick");
 
         /*state
         .movecommand_tx
@@ -57,7 +61,9 @@ fn on_perception(
 
 fn on_interval(mut state: State<BehaviorState>) -> DynFut<NodeResult> {
     Box::pin(async move {
+        println!("Before Ticking BT");
         state.tree.tick();
+        println!("After Ticking BT");
 
         Ok(ThreadNext::Next)
     })
@@ -73,6 +79,7 @@ pub fn create(
     drop_tx: Sender<()>,
 ) -> BehaviorNode {
     let bb = MyBlackboard {
+        n_goals: 0,
         movecommand_tx,
         kicker_tx,
         ball: Vec2 { x: 0.0, y: 0.0 },
