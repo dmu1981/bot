@@ -12,6 +12,8 @@ use std::sync::Arc;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
 
+use super::botnet_watcher::BTBotNetWatcher;
+
 pub struct MyBlackboard {
     pub n_goals: u32,
     pub ball: Vec2,
@@ -32,6 +34,7 @@ pub struct BehaviorNode {
     perception_rx: Receiver<PerceptionMessage>,
 }
 
+
 fn on_perception(
     perception: PerceptionMessage,
     mut state: State<BehaviorState>,
@@ -46,9 +49,7 @@ fn on_perception(
         state.tree.get_blackboard().ball = perception.ball.position.unwrap();
         state.tree.get_blackboard().target_goal = perception.target_goal.position.unwrap();
 
-        //println!("Before Tick");
         state.tree.tick();
-        //println!("After Tick");
 
         /*state
         .movecommand_tx
@@ -92,10 +93,17 @@ pub fn create(
         None,
         BTSequence::new(vec![BTMoveIntoShootPosition::new(), BTShootIntoGoal::new()]),
     );*/
-    let root = BTBotNet::new(config.genetics.pool.clone());
+    let root : BoxedNode<MyBlackboard>;
+    if config.watcher {
+      root = BTBotNetWatcher::new(config.genetics.pool.clone(), config.simulation.url.clone());
+    }
+    else {
+      root = BTBotNet::new(config.genetics.pool.clone());
+    }
 
     let tree = BehaviorTree::new(root, Box::new(bb));
 
+    
     BehaviorNode {
         drop_rx: drop_tx.subscribe(),
         perception_rx,
@@ -121,8 +129,7 @@ impl Executor for BehaviorNode {
 
     async fn run(&self) -> Handles {
         vec![
-            self.subscribe(self.perception_rx.resubscribe(), on_perception),
-            //self.interval(Duration::from_millis(60), on_interval)
+            self.subscribe(self.perception_rx.resubscribe(), on_perception)
         ]
     }
 

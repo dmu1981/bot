@@ -52,6 +52,7 @@ pub struct BTBotNet {
     acc_goal_score: f32,
     acc_dot_score: f32,    
     experiment: Option<Uuid>,
+    node: Uuid,
 }
 
 impl BTBotNet {
@@ -59,6 +60,7 @@ impl BTBotNet {
         let genepool = GenePool::<MyPayload>::new(250, FitnessSortingOrder::LessIsBetter, url).unwrap();
 
         let bot = Box::new(BTBotNet {
+            node: uuid::Uuid::new_v4(),
             toack: None,
             decorators: Vec::<BoxedDecorator<MyBlackboard>>::new(),
             botnet: None,
@@ -113,10 +115,29 @@ impl BTBotNet {
       //println!("Starting next...");
       match self.genepool.poll_one() {
         Ok(gene) => {
-          self.number_runs = 1 + gene.message.generation / 25;
+
+          let rest = gene.message.generation % 10;
+          match rest {            
+            6 => { self.number_runs = 2; },
+            7 => { self.number_runs = 2; },
+            8 => { self.number_runs = 3; },
+            9 => { self.number_runs = 3; },
+            _ => { self.number_runs = 1; },
+          }
+
+          if gene.message.generation <= 20 {
+            self.number_runs = 1;
+          }
+
+          if gene.message.generation >= 100 {
+            self.number_runs = 4;
+          }
+
+          /*self.number_runs = 1 + gene.message.generation / 25;
           if self.number_runs > 6 {
             self.number_runs = 6;
-          }
+          }*/
+
           self.round_timer = 3.0 + (gene.message.generation as f32) / 20.0;
           if self.round_timer > 6.0 {
             self.round_timer = 6.0;
@@ -147,6 +168,7 @@ struct LogData {
   score: f32,
   goals: u32,
   experiment: Uuid,
+  node: Uuid,
 }
 
 impl BTNode<MyBlackboard> for BTBotNet {
@@ -189,7 +211,7 @@ impl BTNode<MyBlackboard> for BTBotNet {
         if blackboard.n_goals > self.n_goals {
           println!("GOAL!");
           self.n_goals = blackboard.n_goals;
-          if self.n_goals < 6 {
+          if self.n_goals < 5 {
             self.start_time = std::time::Instant::now();
           } else {
             println!("   We have enough goals, young padawan. Go get some rest!");
@@ -216,6 +238,7 @@ impl BTNode<MyBlackboard> for BTBotNet {
             self.iteration += 1;
             
             let log = LogData {
+              node: self.node,
               generation: self.generation,
               ball_score: self.acc_ball_score / (self.run as f32),
               goal_score: self.acc_goal_score / (self.run as f32),
@@ -300,8 +323,13 @@ impl BTNode<MyBlackboard> for BTBotNet {
           let orientation = Vec2 { x: output[2], y: output[3] }.normalize();
 
           let steps : u32;
-          steps = self.generation / 10;
-          let r = clamp((steps as f32) * 0.2, 0.1, 1.0);           
+          if self.generation > 9 {
+            steps = (self.generation - 10) / 10;
+          } else {
+            steps = 0;
+          }
+
+          let r = clamp((steps as f32) * 0.111, 0.05, 1.0);           
           let target_orientation = blackboard.target_goal.normalize().lerp(&orientation, r);
 
           blackboard

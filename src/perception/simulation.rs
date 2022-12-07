@@ -88,6 +88,7 @@ async fn get_goals(
 
 fn query_simulation(mut state: State<PerceptionState>) -> DynFut<NodeResult> {
     Box::pin(async move {
+        
         state.last_goals = get_goals(&state.client, &state.get_goals_url, &state.drop_tx).await?.n_goals;
 
         state.last_ball_position = get_url(&state.client, &state.ball_url, &state.drop_tx)
@@ -143,7 +144,7 @@ pub fn create(
     drop_tx: Sender<()>,
     intercom_send_tx: Sender<IntercomMessage>,
 ) -> PerceptionNode {
-    let (tx, rx) = tokio::sync::broadcast::channel::<PerceptionMessage>(16);
+    let (tx, rx) = tokio::sync::broadcast::channel::<PerceptionMessage>(160);
 
     PerceptionNode {
         drop_rx: drop_tx.subscribe(),

@@ -1,8 +1,9 @@
 use crate::math::Vec2;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs;
+use std::sync::WaitTimeoutResult;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct WheelExtrinsics {
@@ -41,6 +42,9 @@ pub struct Config {
     pub simulation: Simulation,
     pub intercom: Intercom,
     pub genetics: Genetics,
+
+    #[serde(default="bool::default")]
+    pub watcher: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -59,10 +63,21 @@ struct Args {
 
     #[arg(long)]
     genepool: Option<String>,
+
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    /// Watch the best genome from the pool instead of training
+    Watcher,
 }
 
 pub fn read_from_disk() -> Result<Config, Box<dyn Error>> {
     let args = Args::parse();
+
+    
 
     let config_path = args.config.unwrap_or_else(|| "config.yaml".to_owned());
     let string = fs::read_to_string(config_path)?;
@@ -86,6 +101,20 @@ pub fn read_from_disk() -> Result<Config, Box<dyn Error>> {
     let port_str = ":".to_owned() + &port.to_string();
     config.simulation.url += &port_str;
     println!("Simulation running at {}", config.simulation.url);
-    println!("AMQP running at {}", config.genetics.pool);
+
+    
+    if let Some(cmd) = args.command {
+      match cmd {
+        Commands::Watcher => {
+          println!("Watching AMQP running at {}", config.genetics.pool);
+          config.watcher = true;
+        }
+      }
+    } else 
+    {
+      println!("Evaluating AMQP running at {}", config.genetics.pool);
+    }
+
+    
     Ok(config)
 }

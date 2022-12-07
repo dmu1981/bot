@@ -110,7 +110,7 @@ fn create(
     url: &str,
     drop_tx: Sender<()>,
 ) -> WheelControllerNode {
-    let (tx, _) = tokio::sync::broadcast::channel::<f32>(16);
+    let (tx, _) = tokio::sync::broadcast::channel::<f32>(160);
     let (tx2, _) = tokio::sync::broadcast::channel::<WheelExtrinsics>(1);
 
     WheelControllerNode {
