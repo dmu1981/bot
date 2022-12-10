@@ -171,6 +171,16 @@ struct LogData {
   node: Uuid,
 }
 
+#[derive(Serialize)]
+struct PositionData {
+  generation: u32,
+  robot_x: f32,
+  robot_y: f32,
+  kicker: bool,
+  experiment: Uuid,
+  node: Uuid,
+}
+
 impl BTNode<MyBlackboard> for BTBotNet {
     fn get_decorators(&self) -> Iter<Box<dyn BTDecorator<MyBlackboard>>> {
         self.decorators.iter()
@@ -217,6 +227,8 @@ impl BTNode<MyBlackboard> for BTBotNet {
             println!("   We have enough goals, young padawan. Go get some rest!");
           }
         }
+
+        
 
         if self.start_time.elapsed().as_secs_f32() > self.round_timer {
           //let score = /*self.ball_score + self.goal_score * 4.0 + */(self.max_goal_distance - 22.0)*80.0;
@@ -300,13 +312,18 @@ impl BTNode<MyBlackboard> for BTBotNet {
         self.ball_score = min(self.ball_score, blackboard.ball.magnitude());
         self.goal_score = min(self.goal_score, (blackboard.ball - blackboard.target_goal).magnitude());
         self.max_goal_distance = max(self.max_goal_distance, (blackboard.ball - blackboard.target_goal).magnitude());*/
+        
         self.dot_score += dot;
         self.ball_score += blackboard.ball.magnitude();
         self.goal_score += (blackboard.ball - blackboard.target_goal).magnitude();
+
         self.score_counter += 1.0;
+
+
         self.max_goal_distance = max(self.max_goal_distance, (blackboard.ball - blackboard.target_goal).magnitude());
 
         //println!("x: {}, y: {}", blackboard.ball.x, blackboard.ball.y);
+
         let input = vec![
           blackboard.ball.x, 
           blackboard.ball.y, 
@@ -340,11 +357,37 @@ impl BTNode<MyBlackboard> for BTBotNet {
               ))
               .unwrap();
 
+          let mut kicker = false;
           if abs(blackboard.ball.x) < 0.2
           && abs(blackboard.ball.y - 1.2) < 0.2
               && blackboard.target_goal.magnitude() < 15.0
           {
               blackboard.kicker_tx.send(true).unwrap();
+              kicker = true;
+          }
+
+          {
+            let log = PositionData {
+              generation: self.generation,
+              robot_x: blackboard.pos.x,
+              robot_y: blackboard.pos.y,
+              kicker,
+              experiment: self.experiment.unwrap(),
+              node: self.node,
+            };
+            let content = serde_json::to_string(&log).unwrap();
+            //println!("{}", content);
+  
+            let mut file = OpenOptions::new()
+            .write(true)
+            .append(true)
+            .create(true)
+            .open("log2")
+            .unwrap();
+  
+            if let Err(e) = writeln!(file, "{}", content) {
+              eprintln!("Couldn't write to file: {}", e);
+            }
           }
         }
         

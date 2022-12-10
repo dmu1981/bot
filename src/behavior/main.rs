@@ -18,6 +18,7 @@ pub struct MyBlackboard {
     pub n_goals: u32,
     pub ball: Vec2,
     pub target_goal: Vec2,
+    pub pos: Vec2,
     pub movecommand_tx: Sender<MoveCommand>,
     pub kicker_tx: Sender<bool>,
     pub wheelspeed_tx_vec: Vec<Sender<f32>>,
@@ -48,6 +49,7 @@ fn on_perception(
         state.tree.get_blackboard().n_goals = perception.n_goals;
         state.tree.get_blackboard().ball = perception.ball.position.unwrap();
         state.tree.get_blackboard().target_goal = perception.target_goal.position.unwrap();
+        state.tree.get_blackboard().pos = perception.pos;
 
         state.tree.tick();
 
@@ -83,6 +85,7 @@ pub fn create(
         n_goals: 0,
         movecommand_tx,
         kicker_tx,
+        pos: Vec2 { x: 0.0, y: 0.0 },
         ball: Vec2 { x: 0.0, y: 0.0 },
         target_goal: Vec2 { x: 0.0, y: 0.0 },
         wheelspeed_tx_vec,
