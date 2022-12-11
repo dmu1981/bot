@@ -163,7 +163,7 @@ impl BTBotNetWatcher {
       match self.rx_gen.try_recv() {
         Ok(gen) => {
           let client = reqwest::Client::new();
-          
+
           for gene in &self.genes {
             if gene.generation == gen {
               println!("Current bot is generation {}", gen);
@@ -198,7 +198,19 @@ impl BTBotNetWatcher {
         Ok(msg) => {
           let client = reqwest::Client::new();
 
+          let mut auto_step = false;
+          if self.genes.len() > 0 {
+            let max_generation = self.genes.iter().reduce(|accum, item| {
+              if accum.generation > item.generation { accum } else { item }
+            }).unwrap().generation;
+            if self.generation == max_generation {
+              auto_step = true;
+            }
+          }
           self.genes = msg;
+          if auto_step {
+            self.generation = self.genes.len() as u32;
+          }
 
           for gene in &self.genes {
             if gene.generation == self.generation {
@@ -296,7 +308,7 @@ impl BTNode<MyBlackboard> for BTBotNetWatcher {
             steps = 0;
           }
 
-          let r = clamp((steps as f32) * 0.111, 0.05, 1.0);           
+          let r = clamp((steps as f32) * 0.05, 0.05, 0.3);
           let target_orientation = blackboard.target_goal.normalize().lerp(&orientation, r);
 
           blackboard

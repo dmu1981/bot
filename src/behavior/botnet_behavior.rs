@@ -346,7 +346,7 @@ impl BTNode<MyBlackboard> for BTBotNet {
             steps = 0;
           }
 
-          let r = clamp((steps as f32) * 0.111, 0.05, 1.0);           
+          let r = clamp((steps as f32) * 0.05, 0.05, 0.3);           
           let target_orientation = blackboard.target_goal.normalize().lerp(&orientation, r);
 
           blackboard
