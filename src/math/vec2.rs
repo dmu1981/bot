@@ -16,8 +16,8 @@ impl Vec2 {
 
     pub fn lerp(&self, other: &Vec2, r: f32) -> Vec2 {
         Vec2 {
-          x: lerp(self.x, other.x, r),
-          y: lerp(self.y, other.y, r)
+            x: lerp(self.x, other.x, r),
+            y: lerp(self.y, other.y, r),
         }
     }
 

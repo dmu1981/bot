@@ -1,7 +1,7 @@
-use crate::config::Config;
 use crate::behavior::bt::*;
-use crate::behavior::move_into_shoot_position::*;
-use crate::behavior::shoot_into_goal::*;
+use crate::config::Config;
+//use crate::behavior::move_into_shoot_position::*;
+//use crate::behavior::shoot_into_goal::*;
 use crate::behavior::botnet_behavior::*;
 use crate::math::Vec2;
 use crate::motioncontroll::MoveCommand;
@@ -18,7 +18,8 @@ pub struct MyBlackboard {
     pub n_goals: u32,
     pub ball: Vec2,
     pub target_goal: Vec2,
-    pub pos: Vec2,
+    pub robot_pos: Vec2,
+    pub ball_pos: Vec2,
     pub movecommand_tx: Sender<MoveCommand>,
     pub kicker_tx: Sender<bool>,
     pub wheelspeed_tx_vec: Vec<Sender<f32>>,
@@ -35,7 +36,6 @@ pub struct BehaviorNode {
     perception_rx: Receiver<PerceptionMessage>,
 }
 
-
 fn on_perception(
     perception: PerceptionMessage,
     mut state: State<BehaviorState>,
@@ -49,7 +49,8 @@ fn on_perception(
         state.tree.get_blackboard().n_goals = perception.n_goals;
         state.tree.get_blackboard().ball = perception.ball.position.unwrap();
         state.tree.get_blackboard().target_goal = perception.target_goal.position.unwrap();
-        state.tree.get_blackboard().pos = perception.pos;
+        state.tree.get_blackboard().robot_pos = perception.abs_robot_pos;
+        state.tree.get_blackboard().ball_pos = perception.abs_ball_pos;
 
         state.tree.tick();
 
@@ -85,28 +86,27 @@ pub fn create(
         n_goals: 0,
         movecommand_tx,
         kicker_tx,
-        pos: Vec2 { x: 0.0, y: 0.0 },
+        robot_pos: Vec2 { x: 0.0, y: 0.0 },
+        ball_pos: Vec2 { x: 0.0, y: 0.0 },
         ball: Vec2 { x: 0.0, y: 0.0 },
         target_goal: Vec2 { x: 0.0, y: 0.0 },
         wheelspeed_tx_vec,
-        reset_sim_tx
+        reset_sim_tx,
     };
 
     /*let root = BTRepeat::new(
         None,
         BTSequence::new(vec![BTMoveIntoShootPosition::new(), BTShootIntoGoal::new()]),
     );*/
-    let root : BoxedNode<MyBlackboard>;
+    let root: BoxedNode<MyBlackboard>;
     if config.watcher {
-      root = BTBotNetWatcher::new(config.genetics.pool.clone(), config.simulation.url.clone());
-    }
-    else {
-      root = BTBotNet::new(config.genetics.pool.clone());
+        root = BTBotNetWatcher::new(config.genetics.pool.clone(), config.simulation.url.clone());
+    } else {
+        root = BTBotNet::new(config.genetics.pool.clone());
     }
 
     let tree = BehaviorTree::new(root, Box::new(bb));
 
-    
     BehaviorNode {
         drop_rx: drop_tx.subscribe(),
         perception_rx,
@@ -131,9 +131,7 @@ impl Executor for BehaviorNode {
     }
 
     async fn run(&self) -> Handles {
-        vec![
-            self.subscribe(self.perception_rx.resubscribe(), on_perception)
-        ]
+        vec![self.subscribe(self.perception_rx.resubscribe(), on_perception)]
     }
 
     async fn stop(&self) -> Handles {

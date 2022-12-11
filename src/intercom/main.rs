@@ -167,14 +167,14 @@ async fn start_master(mut state: State<'_, IntercomState>) {
     }
 }
 
-fn start(state: State<IntercomState>) -> DynFut<NodeResult> {
+fn start(_state: State<IntercomState>) -> DynFut<NodeResult> {
     Box::pin(async move {
         /*if state.master {
-            start_master(state).await;
-        } else {
-            start_slave(state).await;
-        }
-*/
+                    start_master(state).await;
+                } else {
+                    start_slave(state).await;
+                }
+        */
         Ok(ThreadNext::Terminate)
     })
 }

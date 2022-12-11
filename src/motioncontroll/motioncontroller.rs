@@ -121,7 +121,7 @@ fn move_command(
                 for wheel in &mut state.wheels {
                     let movement: f32 = clamp(wheel.wheel.forward.dot(&pos_norm), -1.0, 1.0);
 
-                    let wheel_speed = 0.8 * movement * speed_factor + rotate* 0.2;
+                    let wheel_speed = 0.8 * movement * speed_factor + rotate * 0.2;
                     //println!("{}",wheel_speed);
 
                     wheel.speed = wheel_speed;
@@ -133,8 +133,7 @@ fn move_command(
 
                 for wheel in &state.wheels {
                     wheel.tx.send(wheel.speed / max_abs_speed).unwrap();
-             
-                  }
+                }
             }
         }
         Ok(ThreadNext::Next)

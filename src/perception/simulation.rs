@@ -23,7 +23,8 @@ struct PerceptionState {
     last_owngoal_position: Option<Vec2>,
     last_targetgoal_position: Option<Vec2>,
     last_boundary_position: Option<Vec2>,
-    last_pos: Option<Vec2>,
+    last_abs_robot_pos: Option<Vec2>,
+    last_abs_ball_pos: Option<Vec2>,
     last_goals: u32,
     perception_tx: Sender<PerceptionMessage>,
     intercom_send_tx: Sender<IntercomMessage>,
@@ -43,7 +44,8 @@ struct DetectorResponse {
 
 #[derive(Deserialize, Debug)]
 struct PosResponse {
-    pos: Vec2,
+    abs_robot_pos: Vec2,
+    abs_ball_pos: Vec2,
 }
 
 #[derive(Deserialize, Debug)]
@@ -78,42 +80,47 @@ async fn get_url(
 }
 
 async fn get_goals(
-  client: &reqwest::Client,
-  url: &String,
-  drop_tx: &Sender<()>,
+    client: &reqwest::Client,
+    url: &String,
+    drop_tx: &Sender<()>,
 ) -> std::result::Result<GoalResponse, ThreadError> {
-  let result = client.get(url).send().await;
+    let result = client.get(url).send().await;
 
-  match result {
-      Ok(response) => Ok(serde_json::from_str(response.text().await.unwrap().as_str()).unwrap()),
-      Err(err) => {
-          drop_tx.send(()).unwrap();
-          Err(ThreadError::from(err))
-      }
-  }
+    match result {
+        Ok(response) => Ok(serde_json::from_str(response.text().await.unwrap().as_str()).unwrap()),
+        Err(err) => {
+            drop_tx.send(()).unwrap();
+            Err(ThreadError::from(err))
+        }
+    }
 }
 
 async fn get_pos(
-  client: &reqwest::Client,
-  url: &String,
-  drop_tx: &Sender<()>,
+    client: &reqwest::Client,
+    url: &String,
+    drop_tx: &Sender<()>,
 ) -> std::result::Result<PosResponse, ThreadError> {
-  let result = client.get(url).send().await;
+    let result = client.get(url).send().await;
 
-  match result {
-      Ok(response) => Ok(serde_json::from_str(response.text().await.unwrap().as_str()).unwrap()),
-      Err(err) => {
-          drop_tx.send(()).unwrap();
-          Err(ThreadError::from(err))
-      }
-  }
+    match result {
+        Ok(response) => Ok(serde_json::from_str(response.text().await.unwrap().as_str()).unwrap()),
+        Err(err) => {
+            drop_tx.send(()).unwrap();
+            Err(ThreadError::from(err))
+        }
+    }
 }
 
 fn query_simulation(mut state: State<PerceptionState>) -> DynFut<NodeResult> {
     Box::pin(async move {
-        state.last_pos = Some(get_pos(&state.client, &state.pos_url, &state.drop_tx).await?.pos);
+        let res = get_pos(&state.client, &state.pos_url, &state.drop_tx).await?;
 
-        state.last_goals = get_goals(&state.client, &state.get_goals_url, &state.drop_tx).await?.n_goals;
+        state.last_abs_robot_pos = Some(res.abs_robot_pos);
+        state.last_abs_ball_pos = Some(res.abs_ball_pos);
+
+        state.last_goals = get_goals(&state.client, &state.get_goals_url, &state.drop_tx)
+            .await?
+            .n_goals;
 
         state.last_ball_position = get_url(&state.client, &state.ball_url, &state.drop_tx)
             .await?
@@ -134,7 +141,8 @@ fn query_simulation(mut state: State<PerceptionState>) -> DynFut<NodeResult> {
         state
             .perception_tx
             .send(PerceptionMessage {
-                pos: state.last_pos.unwrap(),
+                abs_robot_pos: state.last_abs_robot_pos.unwrap(),
+                abs_ball_pos: state.last_abs_ball_pos.unwrap(),
                 ball: Measurement {
                     position: state.last_ball_position,
                 },
@@ -178,7 +186,8 @@ pub fn create(
             pos_url: config.simulation.url.to_owned() + "/pos",
             intercom_send_tx,
             perception_tx: tx,
-            last_pos: None,
+            last_abs_robot_pos: None,
+            last_abs_ball_pos: None,
             get_goals_url: config.simulation.url.to_owned() + "/goals",
             ball_url: config.simulation.url.to_owned() + "/ball",
             owngoal_url: config.simulation.url.to_owned() + "/owngoal",

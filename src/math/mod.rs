@@ -3,9 +3,9 @@ pub mod vec2;
 
 pub use vec2::Vec2;
 
-pub fn lerp(a: f32, b: f32,  mut p: f32) -> f32 {
-  p = clamp(p, 0.0, 1.0);
-  a * (1.0 - p) + b * p
+pub fn lerp(a: f32, b: f32, mut p: f32) -> f32 {
+    p = clamp(p, 0.0, 1.0);
+    a * (1.0 - p) + b * p
 }
 
 pub fn min(a: f32, b: f32) -> f32 {

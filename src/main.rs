@@ -55,12 +55,12 @@ async fn main() {
     let perception =
         perception::create(&config, ctrlc_tx.clone(), intercom.send_message_tx.clone());
     let kicker = kicker::create(&config, ctrlc_tx.clone());
-    
+
     let wheelspeed_tx_vec = vec![
-      wheelcontrollers.controllers[0].wheelspeed_tx.clone(),
-      wheelcontrollers.controllers[1].wheelspeed_tx.clone(),
-      wheelcontrollers.controllers[2].wheelspeed_tx.clone(),
-      wheelcontrollers.controllers[3].wheelspeed_tx.clone(),
+        wheelcontrollers.controllers[0].wheelspeed_tx.clone(),
+        wheelcontrollers.controllers[1].wheelspeed_tx.clone(),
+        wheelcontrollers.controllers[2].wheelspeed_tx.clone(),
+        wheelcontrollers.controllers[3].wheelspeed_tx.clone(),
     ];
 
     let behavior = behavior::create(

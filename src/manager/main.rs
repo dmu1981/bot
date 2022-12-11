@@ -2,12 +2,12 @@ use crate::config::Config;
 use crate::node::*;
 use async_trait::async_trait;
 use serde::Deserialize;
-use std::net::{TcpListener, Shutdown};
+//use std::net::{TcpListener, Shutdown};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::broadcast::{Receiver, Sender};
 use tokio::sync::Mutex;
-use std::io::{Write, Read};
+//use std::io::{Write, Read};
 
 const API_VERSION: u32 = 2;
 
@@ -16,7 +16,6 @@ struct ManagerState {
     reset_url: String,
     client: reqwest::Client,
     bot_spawned_tx: Sender<bool>,
-    
 }
 
 pub struct ManagerNode {
@@ -34,7 +33,12 @@ struct APIVersion {
 }
 
 async fn send_reset_signal(url: &String, client: &reqwest::Client) {
-    client.post(url).body("1.0".as_bytes()).send().await.unwrap();
+    client
+        .post(url)
+        .body("1.0".as_bytes())
+        .send()
+        .await
+        .unwrap();
 }
 
 fn reset_sim(reset: bool, state: State<ManagerState>) -> DynFut<NodeResult> {
@@ -47,32 +51,29 @@ fn reset_sim(reset: bool, state: State<ManagerState>) -> DynFut<NodeResult> {
     })
 }
 
-fn health_check(state: State<ManagerState>) -> DynFut<NodeResult> {
-  tokio::spawn(async move {
-    return;
-    let listener = TcpListener::bind("127.0.0.1:3333").unwrap();
+fn health_check(_state: State<ManagerState>) -> DynFut<NodeResult> {
+    tokio::spawn(async move {
+        /*let listener = TcpListener::bind("127.0.0.1:3333").unwrap();
 
-    println!("Echo Listening on port 3333...\n");
+        println!("Echo Listening on port 3333...\n");
 
-    loop {
-        let (mut stream, _) = listener.accept().unwrap();
-        let mut buffer = [0; 1024];        
-        stream.read(&mut buffer).unwrap();
-        let content = match std::str::from_utf8(&mut buffer) {
-          Ok(v) => v,
-          Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-      };
+        loop {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buffer = [0; 1024];
+            stream.read(&mut buffer).unwrap();
+            let content = match std::str::from_utf8(&mut buffer) {
+              Ok(v) => v,
+              Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+          };
 
-      stream.write_all("HTTP/1.1 200 OK\n\n".as_bytes()).unwrap();
-      stream.write_all(content.as_bytes()).unwrap();
+          stream.write_all("HTTP/1.1 200 OK\n\n".as_bytes()).unwrap();
+          stream.write_all(content.as_bytes()).unwrap();
 
-      stream.shutdown(Shutdown::Both).unwrap();
-    }
-  });
+          stream.shutdown(Shutdown::Both).unwrap();
+        }*/
+    });
 
-  Box::pin(async move {
-    Ok(ThreadNext::Terminate)
-  })
+    Box::pin(async move { Ok(ThreadNext::Terminate) })
 }
 
 fn api_check(state: State<ManagerState>) -> DynFut<NodeResult> {
@@ -110,7 +111,7 @@ pub fn create(config: &Config, drop_tx: Sender<()>) -> ManagerNode {
             client: reqwest::Client::new(),
             bot_spawned_tx: tx,
             api_url: config.simulation.url.to_owned() + "/api",
-            reset_url: config.simulation.url.to_owned() + "/reset",            
+            reset_url: config.simulation.url.to_owned() + "/reset",
         })),
     }
 }

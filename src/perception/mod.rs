@@ -12,7 +12,8 @@ pub struct PerceptionMessage {
     pub own_goal: Measurement,
     pub target_goal: Measurement,
     pub boundary: Measurement,
-    pub pos: Vec2, // DO NOT USE, FOR GENETIC ALGORITHM ONLY!
+    pub abs_robot_pos: Vec2, // DO NOT USE, FOR GENETIC ALGORITHM ONLY!
+    pub abs_ball_pos: Vec2,  // DO NOT USE, FOR GENETIC ALGORITHM ONLY!
     pub n_goals: u32,
 }
 
