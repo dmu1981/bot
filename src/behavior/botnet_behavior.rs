@@ -192,12 +192,15 @@ struct PositionData {
     robot_y: f32,
     ball_x: f32,
     ball_y: f32,
+    target_x: f32,
+    target_y: f32,
     kicker: bool,
     experiment: Uuid,
     node: Uuid,
     bot: Uuid,
     score: f32,
     goals: u32,
+    sequence: u32,
 }
 
 impl BTNode<MyBlackboard> for BTBotNet {
@@ -312,9 +315,12 @@ impl BTNode<MyBlackboard> for BTBotNet {
                         .open("log2")
                         .unwrap();
 
+                    let mut seq = 0;
                     for x in &mut self.pos_data {
                         x.score = log.score;
                         x.goals = log.goals;
+                        x.sequence = seq;
+                        seq = seq + 1;
 
                         let content = serde_json::to_string(&x).unwrap();
                         //println!("{}", content);
@@ -429,12 +435,15 @@ impl BTNode<MyBlackboard> for BTBotNet {
                     robot_y: blackboard.robot_pos.y,
                     ball_x: blackboard.ball_pos.x,
                     ball_y: blackboard.ball_pos.y,
+                    target_x: target_position.x,
+                    target_y: target_position.y,
                     kicker,
                     experiment: self.experiment.unwrap(),
                     node: self.node,
                     bot: self.bot,
                     score: 0.0,
                     goals: 0,
+                    sequence: 0,
                 };
                 self.pos_data.push(log);
                 /*let content = serde_json::to_string(&log).unwrap();
