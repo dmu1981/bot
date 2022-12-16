@@ -94,16 +94,11 @@ pub fn create(
         reset_sim_tx,
     };
 
-    /*let root = BTRepeat::new(
-        None,
-        BTSequence::new(vec![BTMoveIntoShootPosition::new(), BTShootIntoGoal::new()]),
-    );*/
-    let root: BoxedNode<MyBlackboard>;
-    if config.watcher {
-        root = BTBotNetWatcher::new(config.genetics.pool.clone(), config.simulation.url.clone());
+    let root: BoxedNode<MyBlackboard> = if config.watcher {
+        BTBotNetWatcher::new(config.genetics.pool.clone(), config.simulation.url.clone())
     } else {
-        root = BTBotNet::new(config.genetics.pool.clone());
-    }
+        BTBotNet::new(config.genetics.pool.clone())
+    };
 
     let tree = BehaviorTree::new(root, Box::new(bb));
 

@@ -83,7 +83,7 @@ async fn poll_generation(tx: Sender<u32>, url: String) {
             Err(_err) => {}
         }
 
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     }
 }
 
@@ -92,29 +92,26 @@ async fn poll_best(tx: Sender<Vec<MyMessage>>, url: String) {
         GenePool::<MyPayload>::new(250, FitnessSortingOrder::LessIsBetter, url).unwrap();
     loop {
         println!("Requesting next bot");
-        match genepool.poll_best() {
-            Ok(mut res) => {
-                res.sort_by(|a, b| a.generation.cmp(&b.generation));
-                res.reverse();
+        if let Ok(mut res) = genepool.poll_best() {
+            res.sort_by(|a, b| a.generation.cmp(&b.generation));
+            res.reverse();
 
-                let message_vec = res
-                    .into_iter()
-                    .map(|gene| MyMessage {
-                        botnet: gene.payload.botnet,
-                        generation: gene.generation,
-                        experiment: gene.payload.experiment,
-                        fitness: gene.fitness.unwrap(),
-                    })
-                    .collect();
+            let message_vec = res
+                .into_iter()
+                .map(|gene| MyMessage {
+                    botnet: gene.payload.botnet,
+                    generation: gene.generation,
+                    experiment: gene.payload.experiment,
+                    fitness: gene.fitness.unwrap(),
+                })
+                .collect();
 
-                //let gene = res.into_iter().nth(50).unwrap();
-                //println!("Next bot generation is {}, Score was {}", gene.generation, gene.fitness.unwrap());
-                tx.send(message_vec).unwrap();
-            }
-            Err(_) => {}
+            //let gene = res.into_iter().nth(50).unwrap();
+            //println!("Next bot generation is {}, Score was {}", gene.generation, gene.fitness.unwrap());
+            tx.send(message_vec).unwrap();
         }
 
-        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+        tokio::time::sleep(std::time::Duration::from_secs(15)).await;
     }
 }
 
@@ -137,8 +134,8 @@ impl BTBotNetWatcher {
         let genepool =
             GenePool::<MyPayload>::new(250, FitnessSortingOrder::LessIsBetter, pool_url).unwrap();
 
-        let bot = Box::new(BTBotNetWatcher {
-            watcher_url: sim_url.clone() + "/watcher",
+        Box::new(BTBotNetWatcher {
+            watcher_url: sim_url + "/watcher",
             decorators: Vec::<BoxedDecorator<MyBlackboard>>::new(),
             botnet: None,
             genepool,
@@ -149,114 +146,116 @@ impl BTBotNetWatcher {
             rx,
             rx_gen,
             genes: Vec::<MyMessage>::new(),
-        });
+        })
+    }
 
-        bot
+    fn find_max_generation(&self) -> u32 {
+        if !self.genes.is_empty() {
+            self.genes
+                .iter()
+                .reduce(|accum, item| {
+                    if accum.generation > item.generation {
+                        accum
+                    } else {
+                        item
+                    }
+                })
+                .unwrap()
+                .generation
+        } else {
+            0
+        }
     }
 
     fn start_next(&mut self) -> bool {
-        match self.rx_gen.try_recv() {
-            Ok(gen) => {
-                let client = reqwest::Client::new();
+        if let Ok(gen) = self.rx_gen.try_recv() {
+            let client = reqwest::Client::new();
 
-                for gene in &self.genes {
-                    if gene.generation == gen {
-                        println!("Current bot is generation {}", gen);
-                        self.botnet = Some(gene.botnet.clone());
-                        self.experiment = Some(gene.experiment);
-                        self.generation = gene.generation;
-                        self.n_goals = 0;
-                        self.start_time = std::time::Instant::now();
+            for gene in &self.genes {
+                if gene.generation == gen {
+                    let max_generation = self.find_max_generation();
+                    println!(
+                        "Current bot is generation {} out of {}",
+                        gen, max_generation
+                    );
+                    self.botnet = Some(gene.botnet.clone());
+                    self.experiment = Some(gene.experiment);
+                    self.generation = gene.generation;
+                    self.n_goals = 0;
+                    self.start_time = std::time::Instant::now();
 
-                        let watcher_state = WatcherState {
-                            experiment: gene.experiment.to_string(),
-                            generation: gene.generation,
-                            max_generation: self.genes.len() as u32,
-                            score: gene.fitness,
-                        };
+                    let watcher_state = WatcherState {
+                        experiment: gene.experiment.to_string(),
+                        generation: gene.generation,
+                        max_generation,
+                        score: gene.fitness,
+                    };
 
-                        let url = self.watcher_url.clone();
-                        tokio::spawn(async move {
-                            client
-                                .post(&url)
-                                .body(serde_json::to_string(&watcher_state).unwrap())
-                                .send()
-                                .await
-                                .unwrap();
-                        });
+                    let url = self.watcher_url.clone();
+                    tokio::spawn(async move {
+                        client
+                            .post(&url)
+                            .body(serde_json::to_string(&watcher_state).unwrap())
+                            .send()
+                            .await
+                            .unwrap();
+                    });
 
-                        return true;
-                    }
+                    return true;
                 }
             }
-            Err(_) => {}
         }
 
-        match self.rx.try_recv() {
-            Ok(msg) => {
-                let client = reqwest::Client::new();
+        if let Ok(msg) = self.rx.try_recv() {
+            let client = reqwest::Client::new();
 
-                let mut auto_step = false;
-                if self.genes.len() > 0 {
-                    let max_generation = self
-                        .genes
-                        .iter()
-                        .reduce(|accum, item| {
-                            if accum.generation > item.generation {
-                                accum
-                            } else {
-                                item
-                            }
-                        })
-                        .unwrap()
-                        .generation;
-                    if self.generation == max_generation {
-                        auto_step = true;
-                    }
-                }
-                self.genes = msg;
-                if auto_step {
-                    self.generation = self.genes.len() as u32;
-                }
+            let autostep = self.generation == self.find_max_generation();
 
-                for gene in &self.genes {
-                    if gene.generation == self.generation {
-                        println!("---Current bot is generation {}", self.generation);
-
-                        let watcher_state = WatcherState {
-                            experiment: gene.experiment.to_string(),
-                            generation: gene.generation,
-                            max_generation: self.genes.len() as u32,
-                            score: gene.fitness,
-                        };
-
-                        let url = self.watcher_url.clone();
-                        tokio::spawn(async move {
-                            client
-                                .post(&url)
-                                .body(serde_json::to_string(&watcher_state).unwrap())
-                                .send()
-                                .await
-                                .unwrap();
-                        });
-
-                        self.n_goals = 0;
-                        self.botnet = Some(gene.botnet.clone());
-                        self.experiment = Some(gene.experiment);
-                        self.generation = gene.generation;
-                        self.n_goals = 0;
-                        self.start_time = std::time::Instant::now();
-
-                        break;
-                    }
-                }
-
-                return true;
+            self.genes = msg;
+            let max_generation = self.find_max_generation();
+            if autostep {
+                self.generation = max_generation;
             }
-            Err(_) => {}
+
+            for gene in &self.genes {
+                if gene.generation == self.generation {
+                    println!(
+                        "Current bot is generation {} out of {}",
+                        self.generation, max_generation
+                    );
+
+                    let watcher_state = WatcherState {
+                        experiment: gene.experiment.to_string(),
+                        generation: gene.generation,
+                        max_generation,
+                        score: gene.fitness,
+                    };
+
+                    let url = self.watcher_url.clone();
+                    tokio::spawn(async move {
+                        client
+                            .post(&url)
+                            .body(serde_json::to_string(&watcher_state).unwrap())
+                            .send()
+                            .await
+                            .unwrap();
+                    });
+
+                    self.n_goals = 0;
+                    self.botnet = Some(gene.botnet.clone());
+                    self.experiment = Some(gene.experiment);
+                    self.generation = gene.generation;
+                    self.n_goals = 0;
+                    self.start_time = std::time::Instant::now();
+
+                    break;
+                }
+            }
+
+            return true;
         }
 
-        return false;
+        false
     }
 }
 
@@ -266,7 +265,7 @@ impl BTNode<MyBlackboard> for BTBotNetWatcher {
     }
 
     fn internal_tick(&mut self, blackboard: &mut Box<MyBlackboard>) -> BTResult {
-        if self.start_next() == true {
+        if self.start_next() {
             self.start_time = std::time::Instant::now();
             blackboard.reset_sim_tx.send(true).unwrap();
             return BTResult::Pending;
@@ -314,12 +313,11 @@ impl BTNode<MyBlackboard> for BTBotNetWatcher {
             }
             .normalize();
 
-            let steps: u32;
-            if self.generation > 9 {
-                steps = (self.generation - 10) / 10;
+            let steps: u32 = if self.generation > 9 {
+                (self.generation - 10) / 10
             } else {
-                steps = 0;
-            }
+                0
+            };
 
             let r = clamp((steps as f32) * 0.05, 0.05, 0.3);
             let target_orientation = blackboard.target_goal.normalize().lerp(&orientation, r);

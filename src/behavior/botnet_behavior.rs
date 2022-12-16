@@ -58,7 +58,7 @@ impl BTBotNet {
         let genepool =
             GenePool::<MyPayload>::new(250, FitnessSortingOrder::LessIsBetter, url).unwrap();
 
-        let bot = Box::new(BTBotNet {
+        Box::new(BTBotNet {
             pos_data: Vec::<PositionData>::new(),
             node: uuid::Uuid::new_v4(),
             bot: uuid::Uuid::new_v4(),
@@ -88,9 +88,7 @@ impl BTBotNet {
             acc_dot_score: 0.0,
             generation: 0,
             experiment: None,
-        });
-
-        bot
+        })
     }
 
     fn start_next(&mut self) {
@@ -160,7 +158,7 @@ impl BTBotNet {
                 self.pos_data = Vec::<PositionData>::new();
                 self.generation = gene.message.generation;
                 self.botnet = Some(gene.message.payload.botnet.clone());
-                self.experiment = Some(gene.message.payload.experiment.clone());
+                self.experiment = Some(gene.message.payload.experiment);
                 self.toack = Some(gene);
             }
             Err(_) => {
@@ -231,7 +229,7 @@ impl BTNode<MyBlackboard> for BTBotNet {
             }
         }
 
-        if let None = self.botnet {
+        if self.botnet.is_none() {
             self.start_next();
 
             //println!("Pending after start_next");
@@ -315,12 +313,10 @@ impl BTNode<MyBlackboard> for BTBotNet {
                         .open("log2")
                         .unwrap();
 
-                    let mut seq = 0;
-                    for x in &mut self.pos_data {
+                    for (seq, x) in self.pos_data.iter_mut().enumerate() {
                         x.score = log.score;
                         x.goals = log.goals;
-                        x.sequence = seq;
-                        seq = seq + 1;
+                        x.sequence = seq as u32;
 
                         let content = serde_json::to_string(&x).unwrap();
                         //println!("{}", content);
@@ -401,12 +397,11 @@ impl BTNode<MyBlackboard> for BTBotNet {
             }
             .normalize();
 
-            let steps: u32;
-            if self.generation > 9 {
-                steps = (self.generation - 10) / 10;
+            let steps: u32 = if self.generation > 9 {
+                (self.generation - 10) / 10
             } else {
-                steps = 0;
-            }
+                0
+            };
 
             let r = clamp((steps as f32) * 0.05, 0.05, 0.3);
             let target_orientation = blackboard.target_goal.normalize().lerp(&orientation, r);
